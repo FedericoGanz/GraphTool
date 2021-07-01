@@ -31,8 +31,8 @@ library(RColorBrewer)
 
 # Load calibri font
 library(extrafont)
-font_import(pattern = "calibri")
-loadfonts(device = "win")
+# font_import(pattern = "calibri")
+# loadfonts(device = "win")
 
 # Useful functions
 my_max <- function(x) ifelse( !all(is.na(x)), max(x, na.rm=T), NA)
@@ -290,7 +290,8 @@ ui <- function(request){
                                                                                 }, SIMPLIFY = FALSE, USE.NAMES = FALSE)
                                                                         ),
                                                                 selected = gb_in_countries_ctry,
-                                                                options = list(`live-search` = TRUE)),
+                                                                options = list(size = 15,
+                                                                        `live-search` = TRUE)),
                                                         
                                                         # Input: Comparators - Structural
                                                         selectizeInput(
@@ -582,14 +583,15 @@ ui <- function(request){
                                                                                 }, SIMPLIFY = FALSE, USE.NAMES = FALSE)
                                                                         ),
                                                                 selected = gb_in_countries_ctry,
-                                                                options = list(`live-search` = TRUE)),
+                                                                options = list(size = 15,
+                                                                        `live-search` = TRUE)),
                                                         
                                                         # UI.2.1.1.2. Select variables
                                                         pickerInput(
                                                                 inputId = "gr_bar_id_vars",
                                                                 label = "Select variables", 
                                                                 choices = c("updatedInServer"),
-                                                                options = list(
+                                                                options = list(size = 15,
                                                                         `actions-box` = TRUE),
                                                                 multiple = TRUE
                                                         ),
@@ -760,7 +762,8 @@ ui <- function(request){
                                                                 inputId = "gr_mult_id_countries",
                                                                 label = "Select countries/regions", 
                                                                 choices = c("updatedInServer"),
-                                                                options = list(`actions-box` = TRUE),
+                                                                options = list(size = 15,
+                                                                        `actions-box` = TRUE),
                                                                 multiple = TRUE
                                                         ),
                                                         
@@ -771,7 +774,8 @@ ui <- function(request){
                                                                 inputId = "gr_mult_id_vars",
                                                                 label = "Select variables", 
                                                                 choices = c("updatedInServer"),
-                                                                options = list(`actions-box` = TRUE),
+                                                                options = list(size = 15,
+                                                                        `actions-box` = TRUE),
                                                                 multiple = TRUE
                                                         ),
                                                 
@@ -962,7 +966,8 @@ ui <- function(request){
                                                                 inputId = "gr_line_id_countries",
                                                                 label = "Select countries/regions", 
                                                                 choices = c("updatedInServer"),
-                                                                options = list(`actions-box` = TRUE),
+                                                                options = list(size = 15,
+                                                                        `actions-box` = TRUE),
                                                                 multiple = TRUE
                                                         ),
                                                         
@@ -973,7 +978,8 @@ ui <- function(request){
                                                                 inputId = "gr_line_id_vars",
                                                                 label = "Select variables", 
                                                                 choices = c("a", "b"),
-                                                                options = list(`actions-box` = TRUE),
+                                                                options = list(size = 15,
+                                                                        `actions-box` = TRUE),
                                                                 multiple = TRUE
                                                         ),
                                                         
@@ -1533,7 +1539,7 @@ server <- function(input, output, session){
                                 # Condition: if all countries selected, set all
                                 if(input$in_id_countries_all){
                                         gb_in_countries_selected_iso2c <<- c("all")
-                                        gb_in_countries_selected <<- c(ctry_vec, input$in_id_countries_reg)
+                                        gb_in_countries_selected <<- c(ctry_vec, reg_vec)
                                 }
                         }, ignoreInit = TRUE)
                                 
@@ -1642,7 +1648,9 @@ server <- function(input, output, session){
                                                 gb_df_wdi$country %in% gb_in_countries_ctry , "Analized", 
                                                         ifelse(gb_df_wdi$country %in% gb_in_countries_str, "Structural", 
                                                                 ifelse(gb_df_wdi$country %in% gb_in_countries_asp, "Aspirational", 
-                                                                        ifelse(gb_df_wdi$country %in% gb_in_countries_reg, "Region", NA)
+                                                                        ifelse(gb_df_wdi$country %in% gb_in_countries_reg, "Region", 
+                                                                                ifelse(gb_df_wdi$country %in% reg_vec,"Rest (region)" , "Rest")
+                                                                        )
                                                                 )
                                                         )
                                         )
@@ -1652,7 +1660,9 @@ server <- function(input, output, session){
                                                 gb_df_wdi$country %in% gb_in_countries_ctry , 1, 
                                                         ifelse(gb_df_wdi$country %in% gb_in_countries_str, 2, 
                                                                 ifelse(gb_df_wdi$country %in% gb_in_countries_asp, 3,
-                                                                        ifelse(gb_df_wdi$country %in% gb_in_countries_reg, 4, NA)
+                                                                        ifelse(gb_df_wdi$country %in% gb_in_countries_reg, 4,
+                                                                                ifelse(gb_df_wdi$country %in% reg_vec, 6, 5)
+                                                                        )
                                                                 )
                                                         )
                                         )
@@ -1779,6 +1789,26 @@ server <- function(input, output, session){
                                 df_external$Ctry_group[df_external$Country %in% input$in_id_countries_asp] <- "Aspirational"
                                 df_external$Ctry_group_num[df_external$Country %in% input$in_id_countries_reg] <- 4
                                 df_external$Ctry_group[df_external$Country %in% input$in_id_countries_reg] <- "Region"
+                                df_external$Ctry_group_num[!(df_external$Country %in% input$in_id_countries_ctry) & 
+                                                !(df_external$Country %in% input$in_id_countries_str) & 
+                                                !(df_external$Country %in% input$in_id_countries_asp) &
+                                                !(df_external$Country %in% input$in_id_countries_reg) & 
+                                                !(df_external$Country %in% reg_vec)] <- 5
+                                df_external$Ctry_group[!(df_external$Country %in% input$in_id_countries_ctry) & 
+                                                !(df_external$Country %in% input$in_id_countries_str) & 
+                                                !(df_external$Country %in% input$in_id_countries_asp) &
+                                                !(df_external$Country %in% input$in_id_countries_reg) &
+                                                !(df_external$Country %in% reg_vec)] <- "Rest"
+                                df_external$Ctry_group_num[!(df_external$Country %in% input$in_id_countries_ctry) & 
+                                                !(df_external$Country %in% input$in_id_countries_str) & 
+                                                !(df_external$Country %in% input$in_id_countries_asp) &
+                                                !(df_external$Country %in% input$in_id_countries_reg) &
+                                                (df_external$Country %in% reg_vec)] <- 6
+                                df_external$Ctry_group[!(df_external$Country %in% input$in_id_countries_ctry) & 
+                                                !(df_external$Country %in% input$in_id_countries_str) & 
+                                                !(df_external$Country %in% input$in_id_countries_asp) &
+                                                !(df_external$Country %in% input$in_id_countries_reg) &
+                                                (df_external$Country %in% reg_vec)] <- "Rest (region)"
                                 
                                 df_external <- df_external[order(
                                         df_external$Var_name,
@@ -1847,6 +1877,27 @@ server <- function(input, output, session){
                                 df_external$Ctry_group[df_external$Country %in% input$in_id_countries_asp] <- "Aspirational"
                                 df_external$Ctry_group_num[df_external$Country %in% input$in_id_countries_reg] <- 4
                                 df_external$Ctry_group[df_external$Country %in% input$in_id_countries_reg] <- "Region"
+                                df_external$Ctry_group_num[!(df_external$Country %in% input$in_id_countries_ctry) & 
+                                        !(df_external$Country %in% input$in_id_countries_str) & 
+                                        !(df_external$Country %in% input$in_id_countries_asp) &
+                                        !(df_external$Country %in% input$in_id_countries_reg) &
+                                        !(df_external$Country %in% reg_vec)] <- 5
+                                df_external$Ctry_group[!(df_external$Country %in% input$in_id_countries_ctry) & 
+                                                !(df_external$Country %in% input$in_id_countries_str) & 
+                                                !(df_external$Country %in% input$in_id_countries_asp) &
+                                                !(df_external$Country %in% input$in_id_countries_reg) &
+                                                !(df_external$Country %in% reg_vec)] <- "Rest"
+                                df_external$Ctry_group_num[!(df_external$Country %in% input$in_id_countries_ctry) & 
+                                                !(df_external$Country %in% input$in_id_countries_str) & 
+                                                !(df_external$Country %in% input$in_id_countries_asp) &
+                                                !(df_external$Country %in% input$in_id_countries_reg) &
+                                                (df_external$Country %in% reg_vec)] <- 6
+                                df_external$Ctry_group[!(df_external$Country %in% input$in_id_countries_ctry) & 
+                                                !(df_external$Country %in% input$in_id_countries_str) & 
+                                                !(df_external$Country %in% input$in_id_countries_asp) &
+                                                !(df_external$Country %in% input$in_id_countries_reg) &
+                                                (df_external$Country %in% reg_vec)] <- "Rest (region)"
+
                                 
                                 # If no source Dataset information, then add file name as dataset variable
                                 df_external$Database[is.na(df_external$Database)] <- inFile$name
@@ -2151,7 +2202,8 @@ server <- function(input, output, session){
                                                                 }, SIMPLIFY = FALSE, USE.NAMES = FALSE)
                                                 ),
                                                 selected = character(0),
-                                                options = list(`live-search` = TRUE)
+                                                options = list(size = 15,
+                                                        `live-search` = TRUE)
                                         )
                                         
                                         x <- ctry_vec[!ctry_vec %in% c(gb_in_countries_ctry, gb_in_countries_asp)]
@@ -2559,7 +2611,7 @@ server <- function(input, output, session){
                                         session = session,
                                         choices = x,
                                         selected = x,
-                                        options = list(
+                                        options = list(size = 15,
                                                 `actions-box` = TRUE)
                                 )
                         })
@@ -2573,21 +2625,41 @@ server <- function(input, output, session){
                         
                         ## SL.2.1.4. Country choice: update selectInput ====
                         observeEvent(to_listen_data(),{
+                                
+                                
+                                #################
                                 x <- unique(gb_df_all_data$Country)
                                 x <- x[!x %in% reg_vec]
+                                
                                 y <- filter(gb_df_all_data, Ctry_group %in% c("Analized")) %>% pull(Country)
                                 y <- unique(y)
-
-                                flags <- filter(flags, country %in% x)
-                                flags <- flags[match(x, flags$country),]
+                                
+                                
+                                # Include group in flags
+                                
+                                flags_bar <- filter(flags, country %in% x)
+                                flags_bar <- flags_bar[match(x, flags_bar$country),]
+                                
+                                flags_bar$Ctry_group <- ifelse(
+                                        flags_bar$country %in% gb_in_countries_ctry , "Analized", 
+                                        ifelse(flags_bar$country %in% gb_in_countries_str, "Structural", 
+                                                ifelse(flags_bar$country %in% gb_in_countries_asp, "Aspirational", 
+                                                        ifelse(flags_bar$country %in% gb_in_countries_reg, "Region",
+                                                                ifelse(flags_bar$country %in% reg_vec, "Rest (region)", "Rest" )
+                                                        )
+                                                )
+                                        )
+                                )
+                                
+                                flags_bar$Ctry_Ctry_group <- paste(flags_bar$country, flags_bar$Ctry_group, sep=" | ")
                                 
                                 updatePickerInput(
                                                 inputId = "gr_bar_id_countries_ctry",
                                                 label = "Select country of analysis",
                                                 session = session,
-                                                choices = flags$country,
+                                                choices = flags_bar$country,
                                                 choicesOpt = list(content =  
-                                                                mapply(flags$country, flags$URL, FUN = function(country, flagUrl) {
+                                                                mapply(flags_bar$Ctry_Ctry_group, flags_bar$URL, FUN = function(country, flagUrl) {
                                                                         HTML(paste(
                                                                                 tags$img(src = flagUrl, width = 20, height = 15),
                                                                                 country
@@ -2595,7 +2667,8 @@ server <- function(input, output, session){
                                                                 }, SIMPLIFY = FALSE, USE.NAMES = FALSE)
                                                         ),
                                                 selected = y,
-                                                options = list(`live-search` = TRUE)
+                                                options = list(size = 15,
+                                                        `live-search` = TRUE)
                                 )
                         })
                         
@@ -3136,19 +3209,34 @@ server <- function(input, output, session){
         
                 # SL.3.1. Inputs and data processing ---- 
         
-                        ## SL.3.1.1. Countries choice: update countries checkbox ====        
+                        ## SL.3.1.1. Countries choice: update countries checkbox ====       
                         observeEvent(to_listen_data(),{
-                                x <- unique(gb_df_all_data$Country)
+                                
+                                z <- unique(paste(gb_df_all_data$Country, gb_df_all_data$Ctry_group, sep=" | "))
+                                datfra <- data.frame(z)
+                                datfra <- separate(data = datfra,
+                                        col = z,
+                                        into = c("A", "B"),
+                                        sep  =  " \\| ",
+                                        extra = "merge")
+                                
+                                ctry <- datfra$A
+                                group <- datfra$B
+                                ctry_list <- as.list(ctry)
+                                names(ctry_list) <- z
+                                y <- c(gb_in_countries_ctry, gb_in_countries_asp, gb_in_countries_str, gb_in_countries_reg)
+                                
                                 if(is.null(x)) {x <- character(0)}
                                 updatePickerInput(
                                         inputId = 'gr_mult_id_countries',
                                         session = session,
-                                        choices = x,
-                                        selected = x,
-                                        options = list(
+                                        choices = ctry_list,
+                                        selected = y,
+                                        options = list(size = 15,
                                                 `actions-box` = TRUE))
+
                         })
-                        
+
                         output$gr_mult_message_select_ctries <- renderUI(
                                 if(is.null(gb_df_all_data$Country)){helpText("Upload data using Load Data tab")}
                         )                        
@@ -3163,7 +3251,7 @@ server <- function(input, output, session){
                                         session = session,
                                         choices = x,
                                         selected = x,
-                                        options = list(
+                                        options = list(size = 15,
                                                 `actions-box` = TRUE))
                         }
                         )
@@ -3693,14 +3781,26 @@ server <- function(input, output, session){
                 
                         ## SL.4.1.1. Countries choice: update countries checkbox ====
                         observeEvent(to_listen_data(),{
-                                x <- unique(gb_df_all_data$Country)
-                                if(is.null(x)) {x <- character(0)}
+                                z <- unique(paste(gb_df_all_data$Country, gb_df_all_data$Ctry_group, sep=" | "))
+                                datfra <- data.frame(z)
+                                datfra <- separate(data = datfra,
+                                        col = z,
+                                        into = c("A", "B"),
+                                        sep  =  " \\| ",
+                                        extra = "merge")
+                                ctry <- datfra$A
+                                group <- datfra$B
+                                ctry_list <- as.list(ctry)
+                                names(ctry_list) <- z
+                                y <- c(gb_in_countries_ctry, gb_in_countries_asp, gb_in_countries_str, gb_in_countries_reg)
+                                
+                                
                                 updatePickerInput(
                                         inputId = 'gr_line_id_countries',
                                         session = session,
-                                        choices = x,
-                                        selected = x,
-                                        options = list(
+                                        choices = ctry_list,
+                                        selected = y,
+                                        options = list(size = 15,
                                                 `actions-box` = TRUE))
                         })
                         
@@ -3719,7 +3819,7 @@ server <- function(input, output, session){
                                         session = session,
                                         choices = x,
                                         selected = x,
-                                        options = list(
+                                        options = list(size = 15,
                                                 `actions-box` = TRUE))
                                 }
                         )
