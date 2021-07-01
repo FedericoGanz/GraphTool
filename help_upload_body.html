@@ -1,0 +1,113 @@
+<p><strong>General</strong></p>
+<ul>
+<li>Data: country-year panel.</li>
+<li>File format: .csv</li>
+</ul>
+<p><strong>Variables that must be included</strong></p>
+<ol>
+<li>&#39;Var_name&#39;: variable name.</li>
+<li>&#39;Units&#39;: units in which the variable is expressed.</li>
+<li>&#39;Ctry_iso&#39;: country <a href="https://unstats.un.org/unsd/tradekb/Knowledgebase/50347/Country-Code">ISO 3 code</a>.</li>
+<li>&#39;Year&#39;: year (non-numeric values will be treated as missing).</li>
+<li>&#39;Value&#39;: value (non-numeric values will be treated as missing).</li>
+</ol>
+<p><strong>Additional variables that can be included</strong></p>
+<ol>
+<li>&#39;Database&#39;: source of the data. If not included then the file name is used.</li>
+<li>&#39;Var_code&#39;: variable code. It should be unique for each variable. If not included, then 'Var_name'_'Database' is used.</li>
+<li>&#39;Description&#39; (Metadata): variable description.</li>
+<li>&#39;Source_data&#39; (Metadata): database where the information was retrieved.</li>
+<li>&#39;Source_org&#39; (Metadata): organization that collects the data.</li>
+</ol>
+<p><em>When loading, data will be filtered using the country selection and year range parameters.</em></p>
+<p><strong>Example</strong></p>
+<p><span style="text-decoration: underline;">Input selection</span></p>
+<ul>
+<li>Countries: ARG, BRA, URY.</li>
+<li>Years: 2010, 2011.</li>
+</ul>
+<p><span style="text-decoration: underline;">Uploaded dataset</span></p>
+<table class="table table-striped">
+<thead>
+<tr>
+<th>Var_name</th>
+<th>Units</th>
+<th>Ctry_iso</th>
+<th>Year</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>URY</td>
+<td>2010</td>
+<td>6,724</td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>ARG</td>
+<td>2010</td>
+<td>68,187</td>
+</tr>
+</tbody>
+</table>
+<p><span style="text-decoration: underline;">Final input</span></p>
+<table class="table table-striped">
+<thead>
+<tr>
+<th>Var_name</th>
+<th>Units</th>
+<th>Ctry_iso</th>
+<th>Year</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>URY</td>
+<td>2010</td>
+<td>6,724</td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>URY</td>
+<td>2011</td>
+<td></td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>ARG</td>
+<td>2010</td>
+<td>68,187</td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>ARG</td>
+<td>2011</td>
+<td></td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>BRA</td>
+<td>2010</td>
+<td></td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>BRA</td>
+<td>2011</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
