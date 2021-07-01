@@ -23,12 +23,16 @@ library(grid)
 library(gridExtra)
 library(devtools)
 library(zip)
-library(extrafont)
 library(data.table)
 library(shinycssloaders)
 library(bsplus)
 library(colourpicker)
 library(RColorBrewer)
+
+# Load calibri font
+library(extrafont)
+font_import(pattern = "calibri")
+loadfonts(device = "win")
 
 # Useful functions
 my_max <- function(x) ifelse( !all(is.na(x)), max(x, na.rm=T), NA)
