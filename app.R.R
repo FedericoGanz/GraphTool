@@ -4227,7 +4227,7 @@ server <- function(input, output, session){
                                                 geom_point(data=rest_df, aes(x = Year, y = Value, group = Country), color="grey", size = 0.75) +
                                                 # Highlighted line
                                                 geom_line(data=highlighted_country_df, aes(x = Year, y = Value), color=input$gr_line_highlight_color, size = 1.5) +
-                                                geom_point(data=highlighted_country_df, aes(x = Year, y = Value), fill=input$gr_line_highlight_color, size = 4, stroke = 1, colour=input$gr_line_highlight_color, shape = 21) +
+                                                geom_point(data=highlighted_country_df, aes(x = Year, y = Value), fill=input$gr_line_highlight_color, size = 4, stroke = 0.75, colour="black", shape = 21) +
                                                 # Label with country name for highlighted
                                                 annotate("text", 
                                                         x = input$gr_line_id_time_range[2]+0.25, 
