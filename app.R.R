@@ -100,11 +100,11 @@ my_min <- function(x) ifelse( !all(is.na(x)), min(x, na.rm=T), NA)
         statistics <- c("Average", "Median", "Maximum", "Minimum", "Standard deviation", "Most recent value")
         
         # Plot lists and counters
-        myplots_bar <- list()
+        
         counter_bar <- 0
-        myplots_mult <- list()
+
         counter_mult <- 0
-        myplots_line <- list()
+        myplots_line <<- list()
         counter_line <- 0
         
         # Default parameters
@@ -1211,6 +1211,7 @@ server <- function(input, output, session){
                                         rv$countries_ctry <- input$in_id_countries_ctry
                                         rv$countries_str <- input$in_id_countries_str
                                         rv$countries_asp <- input$in_id_countries_asp
+                                        rv$countries_reg <- input$in_id_countries_reg
                                         rv$countries_all <- input$in_id_countries_all
                                         print("Global parameters for Countries were modified")
                                         shinyjs::hide("in_id_countries_update")
@@ -1633,7 +1634,7 @@ server <- function(input, output, session){
                                                         ifelse(proc_wdi$country %in% rv$countries_str, "Structural", 
                                                                 ifelse(proc_wdi$country %in% rv$countries_asp, "Aspirational", 
                                                                         ifelse(proc_wdi$country %in% rv$countries_reg, "Region", 
-                                                                                ifelse(proc_wdi$country %in% reg_vec,"Rest (region)" , "Rest")
+                                                                                ifelse((!proc_wdi$country %in% rv$countries_reg) & (proc_wdi$country %in% reg_vec),"Rest (region)" , "Rest")
                                                                         )
                                                                 )
                                                         )
@@ -1641,11 +1642,11 @@ server <- function(input, output, session){
                                         
                                         # Create variable used for sorting by country group, then it will be dropped
                                         proc_wdi$Ctry_group_num <- ifelse(
-                                                proc_wdi$country %in% rv$countries_ctry , 1, 
+                                                proc_wdi$country %in% rv$countries_ctry, 1, 
                                                         ifelse(proc_wdi$country %in% rv$countries_str, 2, 
                                                                 ifelse(proc_wdi$country %in% rv$countries_asp, 3,
                                                                         ifelse(proc_wdi$country %in% rv$countries_reg, 4,
-                                                                                ifelse(proc_wdi$country %in% reg_vec, 6, 5)
+                                                                                ifelse((!proc_wdi$country %in% rv$countries_reg) & (proc_wdi$country %in% reg_vec), 6, 5)
                                                                         )
                                                                 )
                                                         )
@@ -1707,7 +1708,7 @@ server <- function(input, output, session){
                                         
                                         # Store data in reactiveValues
                                         rv$df_wdi <- proc_wdi
-                                        print("Download from WDI was successful: rv$df_wdi dataframe stored in Global Environment.")
+                                        print("Download from WDI was successful: rv$df_wdi dataframe stored.")
                                         print("**************************************")
                         })
                         
@@ -1920,7 +1921,7 @@ server <- function(input, output, session){
 
                                 # Save dataframe in global
                                 rv$external_last <- df_external
-                                print("External upload was successful: rv$external_last dataframe was stored in Global Environment.")
+                                print("External upload was successful: rv$external_last dataframe was stored.")
                                 
                         })
                         
@@ -1928,7 +1929,7 @@ server <- function(input, output, session){
                         observeEvent(input$in_id_external_update, {
                                 print("Merging rv$external_last to rv$external_all...")
                                 rv$external_all <- rbind.fill(rv$external_all, rv$external_last)
-                                print("The rv$external_all dataframe was stored in Global Environment.")
+                                print("The rv$external_all dataframe was stored.")
                                 print("**************************************")
                         })
                         
@@ -2115,6 +2116,30 @@ server <- function(input, output, session){
                                         }
                                 }
                                 
+                                # Include country groups
+                                
+                                rv$df_all_data$Ctry_group <- ifelse(
+                                        rv$df_all_data$Country %in% isolate(rv$countries_ctry) , "Analized", 
+                                        ifelse(rv$df_all_data$Country %in% isolate(rv$countries_str), "Structural", 
+                                                ifelse(rv$df_all_data$Country %in% isolate(rv$countries_asp), "Aspirational", 
+                                                        ifelse(rv$df_all_data$Country %in% isolate(rv$countries_reg), "Region", 
+                                                                ifelse((!rv$df_all_data$Country %in% isolate(rv$countries_reg)) & (rv$df_all_data$Country %in% reg_vec),"Rest (region)" , "Rest")
+                                                        )
+                                                )
+                                        )
+                                )
+                                
+                                rv$df_all_data$Ctry_group_num <- ifelse(
+                                        rv$df_all_data$Country %in% isolate(rv$countries_ctry), 1, 
+                                        ifelse(rv$df_all_data$Country %in% isolate(rv$countries_str), 2, 
+                                                ifelse(rv$df_all_data$Country %in% isolate(rv$countries_asp), 3,
+                                                        ifelse(rv$df_all_data$Country %in% isolate(rv$countries_reg), 4,
+                                                                ifelse((!rv$df_all_data$Country %in% isolate(rv$countries_reg)) & (rv$df_all_data$Country %in% reg_vec), 6, 5)
+                                                        )
+                                                )
+                                        )
+                                )
+                                
                                 # Store all data before removing rows
                                 rv$df_all_data_raw <- rv$df_all_data
                                 
@@ -2131,9 +2156,7 @@ server <- function(input, output, session){
                                         rv$df_all_data <- rv$df_all_data[!is.na(rv$df_all_data$Value),]
                                 }
                 
-                                # Store in global
-                                rv$df_all_data <- rv$df_all_data
-                                print("Merging rv$df_wdi and rv$external_all was successful: rv$df_all_data dataframe stored in Global Environment")
+                                print("Merging rv$df_wdi and rv$external_all was successful: rv$df_all_data dataframe stored")
                                 print("**************************************")
                         })
 
@@ -2210,14 +2233,9 @@ server <- function(input, output, session){
                                         rv$metadata <- empty_metadata
                                         
                                         # Counters
-                                        
-                                        # Plots
                                         counter_bar <- 0
-                                        myplots_bar <- list()
                                         counter_mult <- 0
-                                        myplots_mult <- list()
                                         counter_line <- 0
-                                        myplots_line <- list()
                                         
                                         # Auxiliary vectors
                                         rv$countries_selected <- character(0)
@@ -2316,7 +2334,7 @@ server <- function(input, output, session){
                         get_data <- reactive({
                                 to_listen_data()
                                 input$in_id_reset_confirmation
-                                return(rv$df_all_data)
+                                return(isolate(rv$df_all_data))
                         })
                         
                         output$out_data_table <- renderDataTable({
@@ -2492,7 +2510,7 @@ server <- function(input, output, session){
                                         rv$metadata <- rv$metadata %>% distinct()
                                 }
                                 
-                                # Filter metadata and store in Global Environment
+                                # Filter metadata and store
                                 rv$metadata <- rv$metadata %>% filter(
                                                 Source %in% input$in_id_datasets)
                                 
@@ -2686,7 +2704,7 @@ server <- function(input, output, session){
                                         ifelse(flags_bar$country %in% rv$countries_str, "Structural", 
                                                 ifelse(flags_bar$country %in% rv$countries_asp, "Aspirational", 
                                                         ifelse(flags_bar$country %in% rv$countries_reg, "Region",
-                                                                ifelse(flags_bar$country %in% reg_vec, "Rest (region)", "Rest" )
+                                                                ifelse((!flags_bar$country %in% rv$countries_reg) & (flags_bar$country %in% reg_vec), "Rest (region)", "Rest" )
                                                         )
                                                 )
                                         )
@@ -2746,7 +2764,7 @@ server <- function(input, output, session){
                                                 sep  =  " \\| ",
                                                 extra = "merge")
                                         gr_bar_id_vars_var <- sort(datfra[,2])
-                                        rv$df_all_data %>%
+                                        x <- rv$df_all_data %>%
                                                 as_tibble() %>%
                                                 filter(Country == input$gr_bar_id_countries_ctry & 
                                                                 Var_code %in% gr_bar_id_vars_var &
@@ -2754,6 +2772,7 @@ server <- function(input, output, session){
                                                                 Year <= max(input$gr_bar_id_time_range)) %>%
                                                 select(Var_name, Year, Value, Country, Units, Database, Period) %>%
                                                 group_split(Var_name)
+                                        x
                                 }
                         })
                         
@@ -3158,20 +3177,18 @@ server <- function(input, output, session){
                                                 }
                                         }
                                 
-                                # Append plot to the list of plots        
-                                myplots_bar <- list.append(myplots_bar, p)
-                                names(myplots_bar)[counter_bar] <- counter_bar
-                                
-                                print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-                                
+                                # Append plot to the list of plots
+                                myplots_bar <<- list.append(myplots_bar, p)
+
                                 # Show plot
                                 renderPlot(p)
                         }
                 
                         ## SL.2.2.3. Call Prep data and Create plots ====
                         output$gr_bar_out_plots <- renderUI({
-                                # myplots_bar <<- list()
-                                # gb_counter_bar <<- 0
+                                
+                                myplots_bar <<- list()
+
                                 pd <- req(prepped_data_bar())
                                 tagList(map(
                                         pd,
@@ -3190,6 +3207,8 @@ server <- function(input, output, session){
                                 # Set temporary working directory
                                 owd <- setwd(tempdir())
                                 on.exit(setwd(owd))
+                                
+                                print(rv$myplots_bar)
                                 
                                 # Save the plots
                                 vector_plots <- vector()
@@ -3740,8 +3759,7 @@ server <- function(input, output, session){
                                 }
 
                                 # Append plot to the list of plots
-                                myplots_mult <- list.append(myplots_mult, p)
-                                names(myplots_mult)[counter_mult] <- plot_name
+                                myplots_mult <<- list.append(myplots_mult, p)
 
                                 # Show plot
                                 renderPlot(p)
@@ -3749,6 +3767,7 @@ server <- function(input, output, session){
                         
                         ## SL.2.2.3. Call Prep data and Create plots ====
                         output$gr_mult_out_plots <- renderUI({
+                                myplots_mult <<- list()
                                 pd <- req(prepped_data_mult())
                                 tagList(map(
                                         pd,
@@ -4331,8 +4350,7 @@ server <- function(input, output, session){
                                 }
                                 
                                 # Append plot to the list of plots   
-                                myplots_line <- list.append(myplots_line, p) 
-                                names(myplots_line)[rv$counter_line] <- plot_name
+                                myplots_line <<- list.append(myplots_line, p) 
                                 
                                 # Show plot
                                 renderPlot(p)
@@ -4342,8 +4360,7 @@ server <- function(input, output, session){
                         ## SL.4.2.3. Call prep data and create plots ====
                         output$gr_out_line_plots <- renderUI({
                                 
-                                myplots_line <- list()
-                                rv$counter_line <- 0
+                                myplots_line <<- list()
                                 
                                 pd <- req(prepped_data_line())
                                 tagList(map(
