@@ -3,12 +3,15 @@
 ## Load libraries ----
 
 library(shiny)
+library(shinyjs)
 library(dipsaus)
 library(WDI)
 library(dplyr)
 library(RColorBrewer)
 library(tools)
 library(readxl)
+library(haven)
+
 
 ## Fix variables ----
 
@@ -71,6 +74,7 @@ create_empty_panel <-  function(df, country_vec, year_vec){
         colnames(proc_var) <- proc_var_names
       
         proc_ctry <- data.frame(sort(unique(country_vec)))
+        colnames(proc_ctry)[1] <- "Ctry_iso"
         print(paste0("Unique countries: ", num_ctry))
         print(proc_ctry)
         proc_ctry <- data.frame(proc_ctry[rep(seq_len(nrow(proc_ctry)), each = num_year), ])
@@ -87,7 +91,6 @@ create_empty_panel <-  function(df, country_vec, year_vec){
 
 
         proc <- data.frame(proc_var, proc_ctry, proc_year)
-        print(paste0("Number of rows we should have: ", num_var*num_ctry*num_year))
         print(paste0("Empty dataframe ready to merge with external data. Number of rows in empty dataframe: ", nrow(proc)))
         
         return(proc)
@@ -698,7 +701,6 @@ ui <- fluidPage(
                                                 # Messages
                                                 uiOutput("in_id_ext_mes_ui1"),
                                                 uiOutput("in_id_ext_mes_ui2"),
-                                                uiOutput("in_id_ext_mes_ui3"),
                                         
                                         )
                                 ),
@@ -1116,15 +1118,56 @@ server <- function(input, output, session) {
 
         # Upload external data
         output$in_id_ext_ui <- renderUI({
-                fileInput('in_id_ext', label = "Select file") %>%
+                fileInput('in_id_ext', label = "Select file")  %>%
                         shinyInput_label_embed(
                                 shiny_iconlink() %>%
                                         bs_attach_modal(id_modal = "help_text")
                         )
         })
+        
+        observe({
+                selected_ctries <- c(input$in_id_ctries_ctry, 
+                        input$in_id_ctries_str,
+                        input$in_id_ctries_asp,
+                        input$in_id_ctries_reg)
+                if(is.null(selected_ctries) & input$in_id_ctries_all == FALSE){
+                        onclick("in_id_ext",
+                                showModal(modalDialog(
+                                        title = "Warning",
+                                        "Select Countries and Time period before loading external data.",
+                                        easyClose = TRUE
+                                ))
+                        )
+                }
+        })
+
+
 
         
+        # Update external data message
         
+        observeEvent( c(input$in_id_ctries_ctry, 
+                input$in_id_ctries_str,
+                input$in_id_ctries_asp,
+                input$in_id_ctries_reg,
+                input$in_id_ctries_all,
+                input$in_id_time_range
+                ), {
+        
+                selected_ctries <- c(input$in_id_ctries_ctry, 
+                        input$in_id_ctries_str,
+                        input$in_id_ctries_asp,
+                        input$in_id_ctries_reg)
+                
+                output$in_id_ext_mes_ui1 <- renderUI({
+                        if(is.null(selected_ctries) & input$in_id_ctries_all == FALSE){
+                                return(tags$p("Select Countries and Time period before loading external data.", 
+                                        style = "color:red"))
+                        }
+                        
+                })
+        })
+
         # Inputs reactive values
         
         # Create reactive values initially containing list with default inputs
@@ -1314,7 +1357,7 @@ server <- function(input, output, session) {
 
         })
         
-        # Hide update button after updating (CHECK IF THIS CAN'T BE DELETED)
+        # Hide update button after updating
         observeEvent(input$in_id_update, {
                 
                 shinyjs::hide("in_id_update")
@@ -1550,6 +1593,7 @@ server <- function(input, output, session) {
                 }
         })
         
+        # Reactive data_wdi
         dat_wdi <- eventReactive(input$in_id_update, {
                 
                 data <- nice_wdi_fun(countries_ctry = rv_input$ctries_ctry,
@@ -1565,6 +1609,7 @@ server <- function(input, output, session) {
                 
         })
         
+        # Load external data
         observeEvent(c(input$in_id_ext, 
                 input$in_id_ctries_ctry, 
                 input$in_id_ctries_str, 
@@ -1574,7 +1619,7 @@ server <- function(input, output, session) {
                 input$in_id_time_range
                 ), {
                 
-                # If there is no file loaded return
+                # If there is no file loaded, then return
                 if(is.null(input$in_id_ext)){return()}       
                 
                 # Print messages with filter parameters                
@@ -1608,10 +1653,20 @@ server <- function(input, output, session) {
                         df_external <- read_excel(input$in_id_ext$datapath, col_names = TRUE)
                 }
                 
-                if (!(file_extension == "txt" | file_extension == "csv" | file_extension == "xls" | file_extension == "xlsx")){
-                        print("Wrong file extension. The file must be one of the following formats: .txt, .csv, .xls, .xlsx")
+                if(file_extension == "dta") {df_external <- as.data.frame(read_stata(input$in_id_ext$datapath))}
+                
+                if (!(file_extension == "txt" | file_extension == "csv" | file_extension == "xls" | file_extension == "xlsx" | file_extension == "dta")){
+                        print("Wrong file extension. The file must be one of the following formats: .txt, .xls, .xlsx, .csv, .dta")
+                        output$in_id_ext_mes_ui2 <- renderUI({
+                                return(tags$p("Wrong file extension. The file must be one of the following formats: .txt, .xls, .xlsx, .csv, .dta", 
+                                        style = "color:red"))
+                        })
                         return()
                 }
+                
+                output$in_id_ext_mes_ui2 <- renderUI({
+                        return()
+                })
 
                 # Keep only the following variables
                 headers <- names(df_external) %in% c("Var_name", "Var_code", "Units", "Ctry_iso", "Year", "Value", "Database")
@@ -1626,17 +1681,26 @@ server <- function(input, output, session) {
                                 (!"Value" %in% names(df_external))
                 ){
                         print("One of the following variables is missing from the uploaded dataset: Var_name, Units, Ctry_iso, Year, Value.")
+                        output$in_id_ext_mes_ui2 <- renderUI({
+                                vec <- c("Var_name", "Units", "Ctry_iso", "Year", "Value")
+                                missing_variables <- vec[!vec %in% names(df_external)]
+                                text <- paste(missing_variables, collapse =", ")
+                                text <- paste("Error in file upload. The following required variables are missing from the last uploaded dataset: ", 
+                                        text, ". Data has not been included.",
+                                        collapse ="")
+                                return(tags$p(text, style = "color:red"))
+                        })
                         return()}
+                
+                # Empty message if all variables included
+                output$in_id_ext_mes_ui2 <- renderUI({
+                        return()
+                })
                 
                 # To ensure we have the same number of rows per variable
                 # create a dataset with num_ctries * num_years rows * num_variable
                 # that includes only "Country", "Year" and "Variable"
                 
-                variables <- select(df_external, c("Var_name", "Units"))
-                
-                print(input$in_id_ctries_ctry)
-                
-
                 if(input$in_id_ctries_all == TRUE){
                         ctries_select_iso3 <- unique(ctry_df$iso3c)
                 } else {
@@ -1648,9 +1712,6 @@ server <- function(input, output, session) {
                 }
 
                 years <- input$in_id_time_range[1]:input$in_id_time_range[2]
-                
-                print(ctries_select_iso3)
-                print(years)
                 
                 # If no defined parameters for time range or countries, then return
                 if(length(ctries_select_iso3)==0 | length(years)==0){
@@ -1668,12 +1729,8 @@ server <- function(input, output, session) {
                         all.x = TRUE)
 
                 names(proc)[names(proc) == "country"] <- "Country"
-                
-                print(proc)
-                print(df_external)
-                
+
                 # Merge empty dataframe with uploaded data
-                print(merge_aux)
                 df_external <- merge(
                         x = proc,
                         y = df_external,
@@ -1684,7 +1741,6 @@ server <- function(input, output, session) {
                 if(!"Database" %in% names(df_external)) {
                         df_external$Database <- input$in_id_ext$name
                 } else {df_external$Database[is.na(df_external$Database)] <- input$in_id_ext$name}
-                
                 
                 # Source (file name)
                 df_external$Source <- input$in_id_ext$name
@@ -1763,9 +1819,14 @@ server <- function(input, output, session) {
                 
                 # Save dataframe in global
                 rv_df$dat_ext_last <- df_external
+                
+                # Return
+                return(rv_df$dat_ext_last)
 
         })
         
+        
+        # Merge datasets
         observeEvent(input$in_id_update, {
                 
                 # Append last external dataset to all loaded external datasets
@@ -1834,24 +1895,35 @@ server <- function(input, output, session) {
                         rv_df$dat_all$Ctry_group_num,
                         rv_df$dat_all$Ctry_iso,
                         rv_df$dat_all$Year), ]
-        })
                 
+        })
+        
+        # Render table        
         output$out_data_table <- renderDataTable({
                 
-                # Invalidate if in_id_reset_confirm or in_id_update
-
+                print(is.null(input$in_id_update))
+                print(input$in_id_update)
+                print(is.null(input$in_id_reset_confirm))
+                print(input$in_id_update == 0)
+                print(is.null(input$in_id_reset_confirm))
+                print(input$in_id_reset_confirm == FALSE)
+                print(length(input$in_id_reset_confirm))
+                
+                print("AAAAAAAAAAAAAAAAAAAAAAAAA")
+                print(is.null(input$in_id_update) & length(input$in_id_reset_confirm) == 0)
+                print(input$in_id_update == 0 & input$in_id_reset_confirm == FALSE)
+                
                 
                 # Table
-                if(is.null(input$in_id_update) & is.null(input$in_id_reset_confirm)){
-                        x <- initial_wdi_df
-                }else{
-                        if(input$in_id_update == 0 & is.null(input$in_id_reset_confirm)){
-                                x <- initial_wdi_df} else{
+                if(input$in_id_update == 0 & length(input$in_id_reset_confirm) == 0){
+                        x <- initial_wdi_df} else{
+                                if(input$in_id_update >= 1){
+                                        x <- rv_df$dat_all}else{
                                         if(input$in_id_update == 0 & input$in_id_reset_confirm == FALSE){
                                                 x <- initial_wdi_df
-                                        }else{x <- rv_df$dat_all} 
+                                        }else{x <- rv_df$dat_all}
                                 }
-                }
+                        }
 
                 # Eliminate variables Ctry_group_num, Period_num and Source
                 x <- subset(x, select=-c(Ctry_group_num, Period_num, Source))
