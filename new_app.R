@@ -4,6 +4,10 @@
 
 library(shiny)
 library(shinyjs)
+library(shinythemes)
+library(shinyWidgets)
+library(shinycssloaders)
+
 library(dipsaus)
 library(WDI)
 library(dplyr)
@@ -11,7 +15,16 @@ library(RColorBrewer)
 library(tools)
 library(readxl)
 library(haven)
-
+library(tidyr)
+library(plyr)
+library(bsplus)
+library(DT)
+# library(remotes)
+# library(Rcpp)
+library(summarytools)
+# library(panelr)
+library(reshape2)
+library(ExPanDaR)
 
 ## Fix variables ----
 
@@ -55,7 +68,6 @@ create_empty_panel <-  function(df, country_vec, year_vec){
         # variable_df: dataframe containing Var_name (column 1) and units (column 2)
         # country_vec: vector containing country_iso
         # year_vec: vector containing years
-        headers <- names(df) %in% c("Var_name", "Var_code", "Units", "Ctry_iso", "Year", "Value", "Database")
         var_headers <- names(df) %in% c("Var_name", "Var_code", "Units", "Database")
 
         proc_var <- df[ , var_headers]
@@ -279,6 +291,64 @@ nice_wdi_fun <- function(countries_ctry,
         print("WDI data download was successful")
         return(proc_wdi)
 }
+
+
+nice_wdi_fun_meta <- function(dataframe){
+        
+        var_headers <- names(dataframe) %in% c("Var_name", "Var_code", "Units", "Database", "Source")
+        
+        proc <- dataframe[ , var_headers]
+        proc <- proc[!duplicated(proc), ]
+
+        # Merge data for WDI variables
+        if(!empty(dataframe)){
+                
+                proc_wdi <- proc[proc$Source == "WDI", ]  
+                
+                metadata_table_wdi <- var_df
+                
+                names(metadata_table_wdi)[names(metadata_table_wdi)==
+                                "indicator"]<- "Var_code"
+                names(metadata_table_wdi)[names(metadata_table_wdi)==
+                                "name"]<- "Var_name"
+                names(metadata_table_wdi)[names(metadata_table_wdi)==
+                                "description"] <- "Description"
+                names(metadata_table_wdi)[names(metadata_table_wdi)==
+                                "sourceDatabase"]<- "Source_data"
+                names(metadata_table_wdi)[names(metadata_table_wdi)==
+                                "sourceOrganization"]<- "Source_org" 
+                
+                proc_wdi <- merge(
+                        x = proc_wdi,
+                        y = metadata_table_wdi[ , c("Var_name", "Var_code", "Description", "Source_data", "Source_org")],
+                        by = c("Var_name", "Var_code"),
+                        all.x = TRUE)
+                
+                proc_wdi <- proc_wdi %>% select("Var_name",
+                        "Var_code",
+                        "Description",
+                        "Units",
+                        "Source_data",
+                        "Source_org",
+                        "Database",
+                        "Source"
+                )
+                return(proc_wdi)
+        } else {
+                
+                empty_metadata_df <- data.frame(
+                        Var_name = character(0),
+                        Var_code = character(0),
+                        Description = character(0),
+                        Units = character(0),
+                        Source_data = character(0),
+                        Source_org = character(0),
+                        Database = character(0),
+                        Source = character(0))
+                return(empty_metadata_df)
+        }
+}
+                
         
 # Empty dataframes
 empty_data_df <- data.frame(
@@ -383,6 +453,8 @@ initial_wdi_df <- nice_wdi_fun(countries_ctry = def_list$ctries_ctry,
         variables = variables,
         start_year = def_list$time_range_start, 
         end_year = def_list$time_range_end)
+
+initial_wdi_df_meta <- nice_wdi_fun_meta(initial_wdi_df)
 
 # Add period and period number variables
 if(def_list$time_range_end-def_list$time_range_start >= 2){
@@ -727,14 +799,48 @@ ui <- fluidPage(
                                                 
                                                 # Output: Metadata
                                                 tabPanel("Metadata",
-                                                        tags$br(),
                                                         
+                                                        # Table 2: metadata
+                                                        tags$br(),
+                                                        dataTableOutput("out_metadata_table") %>% withSpinner(
+                                                                type = 3, 
+                                                                color = fix_list$col_spinner, 
+                                                                color.background = "white"),
+                                                        
+                                                        # Data download button
+                                                        tags$br(),
+                                                        downloadButton("out_download_metadata", 
+                                                                "Download metadata")
                                                 ),
                                                 
                                                 # Output: Summary
                                                 tabPanel("Summary",
                                                         tags$br(),
+                                                        
+                                                        h4("Summary"),
+                                                        htmlOutput("out_summary"),
+                                                        
+                                                        h4("Missing values"),
+                                                        plotOutput("out_summary_missing")
                                                 
+                                                ),
+                                                
+                                                # Output: Country table
+                                                tabPanel("Countries/regions WDI",
+                                                        
+                                                        tags$br(),
+                                                        h4("Countries"),
+                                                        dataTableOutput("out_ctry_df"),
+                                                        
+                                                        tags$br(),
+                                                        h4("Aggregates"),
+                                                        dataTableOutput("out_ctry_df_agg"),
+                                                        
+                                                        # Download button
+                                                        tags$br(),
+                                                        downloadButton("out_download_ctry_df", 
+                                                                "Download")
+                                                        
                                                 )
                                         )
                                 )
@@ -1125,19 +1231,42 @@ server <- function(input, output, session) {
                         )
         })
         
-        observe({
-                selected_ctries <- c(input$in_id_ctries_ctry, 
-                        input$in_id_ctries_str,
-                        input$in_id_ctries_asp,
-                        input$in_id_ctries_reg)
-                if(is.null(selected_ctries) & input$in_id_ctries_all == FALSE){
+        observeEvent(c(input$in_id_ctries_ctry, 
+                input$in_id_ctries_str,
+                input$in_id_ctries_asp,
+                input$in_id_ctries_reg,
+                input$in_id_ctries_all),{
+                        ctry_aux <- c(input$in_id_ctries_ctry, 
+                                input$in_id_ctries_str,
+                                input$in_id_ctries_asp,
+                                input$in_id_ctries_reg)
+
+                if(is.null(ctry_aux) & input$in_id_ctries_all == FALSE){
+
                         onclick("in_id_ext",
-                                showModal(modalDialog(
+                                showModal(session = session,
+                                        modalDialog(
                                         title = "Warning",
                                         "Select Countries and Time period before loading external data.",
                                         easyClose = TRUE
                                 ))
                         )
+                } else {
+                        if(length(ctry_aux)==0 & input$in_id_ctries_all == FALSE){
+
+                                print(length(ctry_aux)==0 & input$in_id_ctries_all == FALSE)
+                                onclick("in_id_ext",
+                                        showModal(session = session,
+                                                modalDialog(
+                                                title = "Warning",
+                                                "Select Countries and Time period before loading external data.",
+                                                easyClose = TRUE
+                                        ))
+                                )
+                        } else {
+                                onclick("in_id_ext",
+                                        removeModal(session = session))
+                        }
                 }
         })
 
@@ -1212,14 +1341,16 @@ server <- function(input, output, session) {
         rv_df <- reactiveValues(
 
                 dat_wdi = initial_wdi_df,
-                dat_imf = empty_data_df,
+                # dat_imf = empty_data_df,
                 dat_ext = empty_data_df,
                 dat_ext_last = empty_data_df,
-                dat_all = empty_data_df,
-                met_wdi = empty_metadata_df,
-                met_imf = empty_metadata_df,
+                dat_all = initial_wdi_df,
+                
+                met_wdi = initial_wdi_df_meta,
+                # met_imf = empty_metadata_df,
                 met_ext = empty_metadata_df,
-                met_all = empty_metadata_df
+                met_ext_last = empty_metadata_df,
+                met_all = initial_wdi_df_meta
                 
         )
         
@@ -1430,6 +1561,7 @@ server <- function(input, output, session) {
                                 rv_df$met_wdi <- empty_metadata_df
                                 rv_df$met_imf <- empty_metadata_df
                                 rv_df$met_ext <- empty_metadata_df
+                                rv_df$met_ext_last <- empty_metadata_df
                                 rv_df$met_all <- empty_metadata_df
                         
                         # Reset inputs
@@ -1588,10 +1720,16 @@ server <- function(input, output, session) {
                                 
                                 # Hide update button
                                 
-                                shinyjs::hide("in_id_update")
+                                # shinyjs::hide("in_id_update")
                                 
                 }
         })
+        
+        # Hide update button
+        observeEvent(input$in_id_reset_confirm, {
+                shinyjs::hide("in_id_update")
+        })
+        
         
         # Reactive data_wdi
         dat_wdi <- eventReactive(input$in_id_update, {
@@ -1669,7 +1807,7 @@ server <- function(input, output, session) {
                 })
 
                 # Keep only the following variables
-                headers <- names(df_external) %in% c("Var_name", "Var_code", "Units", "Ctry_iso", "Year", "Value", "Database")
+                headers <- names(df_external) %in% c("Var_name", "Var_code", "Description", "Units", "Ctry_iso", "Year", "Value", "Source", "Database", "Source_data", "Source_org")
                 merge_aux <- names(df_external)[names(df_external) %in% c("Var_name", "Var_code", "Units", "Ctry_iso", "Year", "Database")]
                 df_external <- df_external[ , headers]
                 
@@ -1715,7 +1853,7 @@ server <- function(input, output, session) {
                 
                 # If no defined parameters for time range or countries, then return
                 if(length(ctries_select_iso3)==0 | length(years)==0){
-                        print("Missing year or country parameters")
+                        print("Missing Year or Country parameter")
                         return()
                 }
 
@@ -1745,11 +1883,26 @@ server <- function(input, output, session) {
                 # Source (file name)
                 df_external$Source <- input$in_id_ext$name
                 
-                # If no variable code, then concatenate variable name and dataset variable and use as var_code
+                # If no Var_code, then concatenate variable name and dataset variable and use as var_code
                 if(!"Var_code" %in% names(df_external)) {
                         df_external$Var_code <- paste(df_external$Var_name, df_external$Database, sep="_")
                 } else {
                         df_external$Var_code[is.na(df_external$Var_code)] <- paste(df_external$Var_name, df_external$Database, sep="_")
+                }
+
+                # If no Description, include columns with NA
+                if(!"Description" %in% names(df_external)) {
+                        df_external$Description <- as.character(NA)
+                }
+                
+                # If no Source_data, include columns with NA
+                if(!"Source_data" %in% names(df_external)) {
+                        df_external$Source_data <- as.character(NA)
+                }
+                
+                # If no Source_org, include columns with NA
+                if(!"Source_org" %in% names(df_external)) {
+                        df_external$Source_org <- as.character(NA)
                 }
                 
                 # Generate country group string variable and country group number variable to sort
@@ -1818,10 +1971,31 @@ server <- function(input, output, session) {
                         df_external$Year), ]
                 
                 # Save dataframe in global
-                rv_df$dat_ext_last <- df_external
+                rv_df$dat_ext_last <- df_external[ , c("Var_name",
+                        "Var_code",
+                        "Units",
+                        "Country",
+                        "Ctry_iso",
+                        "Ctry_group",
+                        "Year",
+                        "Period",
+                        "Value",
+                        "Database",
+                        "Period_num",
+                        "Ctry_group_num",
+                        "Source"
+                        )]
                 
-                # Return
-                return(rv_df$dat_ext_last)
+                aux_met_ext_last <- df_external[ , c("Var_name",
+                        "Var_code",
+                        "Description",
+                        "Units",
+                        "Source_data",
+                        "Source_org",
+                        "Database",
+                        "Source")]
+                
+                rv_df$met_ext_last <- aux_met_ext_last[!duplicated(aux_met_ext_last), ]
 
         })
         
@@ -1831,6 +2005,11 @@ server <- function(input, output, session) {
                 
                 # Append last external dataset to all loaded external datasets
                 rv_df$dat_ext <- rbind.fill(rv_df$dat_ext, rv_df$dat_ext_last)
+                rv_df$dat_ext <- rv_df$dat_ext[!duplicated(rv_df$dat_ext), ]
+                rv_df$dat_ext_last <- empty_data_df
+                rv_df$met_ext <- rbind.fill(rv_df$met_ext, rv_df$met_ext_last)
+                rv_df$met_ext <- rv_df$met_ext[!duplicated(rv_df$met_ext), ]
+                rv_df$dat_ext_last <- empty_metadata_df
                 
                 # Update WDI dataset
                 rv_df$dat_wdi <- dat_wdi()
@@ -1900,20 +2079,7 @@ server <- function(input, output, session) {
         
         # Render table        
         output$out_data_table <- renderDataTable({
-                
-                print(is.null(input$in_id_update))
-                print(input$in_id_update)
-                print(is.null(input$in_id_reset_confirm))
-                print(input$in_id_update == 0)
-                print(is.null(input$in_id_reset_confirm))
-                print(input$in_id_reset_confirm == FALSE)
-                print(length(input$in_id_reset_confirm))
-                
-                print("AAAAAAAAAAAAAAAAAAAAAAAAA")
-                print(is.null(input$in_id_update) & length(input$in_id_reset_confirm) == 0)
-                print(input$in_id_update == 0 & input$in_id_reset_confirm == FALSE)
-                
-                
+
                 # Table
                 if(input$in_id_update == 0 & length(input$in_id_reset_confirm) == 0){
                         x <- initial_wdi_df} else{
@@ -1941,6 +2107,119 @@ server <- function(input, output, session) {
                                 mark = ",",
                                 digits = 1)
         })
+        
+        # Download data handler
+        output$out_download_data <- downloadHandler(
+                filename = function() {
+                        paste('data', '.csv', sep='')
+                },
+                content = function(file) {
+                        write.csv(rv_df$dat_all, file, row.names = FALSE)
+                }
+        )
+        
+        # Event reactive metadata
+        metadata <- eventReactive(c(input$in_id_update, input$in_id_reset_confirm),{
+                
+                if(empty(rv_df$dat_all)){
+                        print("Empty dataset. Return empty metadata")
+                        rv_df$met_all <- empty_metadata_df
+                        return(rv_df$met_all)}
+
+                # Merge data for WDI variables
+                
+                rv_df$met_wdi <- nice_wdi_fun_meta(rv_df$dat_wdi)
+                rv_df$met_all <- rbind(rv_df$met_wdi, rv_df$met_ext)
+
+                return(rv_df$met_all)
+                
+        })
+        
+        # Render metadata table        
+        output$out_metadata_table <- renderDataTable({
+                
+                datatable(metadata(), rownames = FALSE, options = list(scrollX = T))
+        })
+        
+        # Download metadata handler
+        output$out_download_metadata <- downloadHandler(
+                filename = function() {
+                        paste('metadata', '.csv', sep='')
+                },
+                content = function(file) {
+                        write.csv(rv_df$met_all, file, row.names = FALSE)
+                }
+        )
+        
+        # Render summary table
+        output$out_summary <- renderUI({
+                
+                # Reshape and select data
+                aux <- dcast(rv_df$dat_all, Ctry_iso + Year ~ Var_name, value.var="Value")
+                # Print summary
+                print(dfSummary(aux), headings = FALSE, method = 'render', bootstrap.css = FALSE,
+                        graph.magnif = 0.75, valid.col = FALSE, style = "grid")
+                
+        })
+        
+        # Render summary missing values plot
+        output$out_summary_missing <- renderPlot({
+                
+                # Reshape and select data
+                aux <- dcast(rv_df$dat_all, Ctry_iso + Year ~ Var_name, value.var="Value")
+                
+                # Create plot
+                p <- prepare_missing_values_graph(aux, ts_id = "Year")
+                print(str(p))
+                p
+        })
+        
+        # Render countries table        
+        output$out_ctry_df <- renderDataTable({
+                
+                ctry_df <- ctry_df %>% arrange(factor(country, levels = c(ctry_vec, reg_vec)))
+                ctry_df <- subset(ctry_df, select=-c(capital, longitude, latitude, lending))
+                
+                names(ctry_df)[names(ctry_df) == "iso3c"] <- "Iso3c"
+                names(ctry_df)[names(ctry_df) == "iso2c"] <- "Iso2c"
+                names(ctry_df)[names(ctry_df) == "country"] <- "Country/Region"
+                names(ctry_df)[names(ctry_df) == "region"] <- "Region"
+                names(ctry_df)[names(ctry_df) == "income"] <- "Income"
+                
+                rv_df$country_list <- ctry_df 
+                
+                aux <- ctry_df[ctry_df$Region != "Aggregates", ]
+                
+                datatable(aux,
+                        rownames = FALSE,
+                        options = list(pageLength = 15,
+                                columnDefs = list( list(className = 'dt-left', targets = "_all")),
+                                scrollX = T)
+                )
+        })
+        
+        # Render countries table        
+        output$out_ctry_df_agg <- renderDataTable({
+                
+                aux <- rv_df$country_list[rv_df$country_list$Region == "Aggregates", ]
+                
+                datatable(aux,
+                        rownames = FALSE,
+                        options = list(pageLength = 15,
+                                columnDefs = list( list(className = 'dt-left', targets = "_all")),
+                                scrollX = T)
+                )
+        })
+        
+        # Download countries
+        output$out_download_ctry_df <- downloadHandler(
+                filename = function() {
+                        paste('country_list', '.csv', sep='')
+                },
+                content = function(file) {
+                        write.csv(rv_df$country_list, file, row.names = FALSE)
+                }
+        )
                 
 
         
