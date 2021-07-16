@@ -25,6 +25,7 @@ library(summarytools)
 # library(panelr)
 library(reshape2)
 library(ExPanDaR)
+library(zip)
 
 ## Fix variables ----
 
@@ -109,7 +110,7 @@ create_empty_panel <-  function(df, country_vec, year_vec){
         
 }
 
-# Downloads WDI data and creates "nice" dataframe
+# Function "nice_wdi_fun": Downloads WDI data and creates "nice" dataframe
 nice_wdi_fun <- function(countries_ctry, 
         countries_str, 
         countries_asp, 
@@ -292,6 +293,7 @@ nice_wdi_fun <- function(countries_ctry,
         return(proc_wdi)
 }
 
+#Function "nice_wdi_fun_meta": creates nice WDI metadata dataframe
 
 nice_wdi_fun_meta <- function(dataframe){
         
@@ -346,6 +348,34 @@ nice_wdi_fun_meta <- function(dataframe){
                         Database = character(0),
                         Source = character(0))
                 return(empty_metadata_df)
+        }
+}
+
+# Function: prepare data for dynamic graphs
+prep_data_for_graphs <- function(
+        df,
+        vars,
+        ctries,
+        t_start,                              
+        t_end                                 
+        ){
+        if(!is.null(vars)){
+                datfra <- data.frame(vars)
+                colnames(datfra)[1] <- "VARS"
+                datfra <- separate(data = datfra, 
+                        col = VARS,
+                        into = c("A", "Var_code"), 
+                        sep  =  " \\| ",
+                        extra = "merge")
+                plot_input <- df %>%
+                        as_tibble() %>%
+                        filter(Country == ctries & 
+                                        Var_code %in% datfra$Var_code &
+                                        Year >= t_start &
+                                        Year <= t_end) %>%
+                        group_split(Var_name)
+                
+                return(plot_input)
         }
 }
                 
@@ -505,7 +535,8 @@ fix_list <- list(
         col_graphs_line = "#FC4024",
         col_palette_mult = "Oranges",
         font = "Calibri",
-        digits = 1
+        digits = 1,
+        digits_y = 0
 )
 
 # Help text for upload data
@@ -625,12 +656,12 @@ ui <- fluidPage(
                                                         selected = def_list$ctries_reg),
                                                 
                                                 # Download all countries
-                                                materialSwitch (
+                                                materialSwitch(
                                                         inputId = "in_id_ctries_all",
                                                         label = "Include all countries and regions",
                                                         value = def_list$ctries_all,
                                                         status = "primary",
-                                                        right = TRUE),
+                                                        right = TRUE)
                                                 
                                         ),
                                         
@@ -772,7 +803,7 @@ ui <- fluidPage(
                                                 
                                                 # Messages
                                                 uiOutput("in_id_ext_mes_ui1"),
-                                                uiOutput("in_id_ext_mes_ui2"),
+                                                uiOutput("in_id_ext_mes_ui2")
                                         
                                         )
                                 ),
@@ -876,7 +907,8 @@ ui <- fluidPage(
                                                                 ),
                                                                 selected = def_list$ctries_ctry,
                                                                 options = list(size = 15,
-                                                                        `live-search` = TRUE)),
+                                                                        `live-search` = TRUE)
+                                                        ),
                                                         
                                                         # Select variables
                                                         pickerInput(
@@ -897,7 +929,7 @@ ui <- fluidPage(
                                                                 max = def_list$time_range_end,
                                                                 step = 1,
                                                                 value = c(def_list$time_range_start, def_list$time_range_end)
-                                                        ),
+                                                        )
                                                 ),
                                                 
                                                 wellPanel( 
@@ -966,7 +998,6 @@ ui <- fluidPage(
                                                                 )
                                                         ),
                                                         
-                                                        
                                                         # Transform data to Trillion/Billion/Million/Thousands
                                                         materialSwitch(
                                                                 inputId = "gr_bar_id_transform_zeros",
@@ -988,9 +1019,17 @@ ui <- fluidPage(
                                                         # Number of digits
                                                         numericInput(
                                                                 inputId = "gr_bar_id_digits",
-                                                                label = "Number of digits",
+                                                                label = "Number of digits in labels",
                                                                 min = 0,
                                                                 value = fix_list$digits
+                                                        ),
+                                                        
+                                                        # Number of digits
+                                                        numericInput(
+                                                                inputId = "gr_bar_id_digits_y",
+                                                                label = "Number of digits in Y-axis",
+                                                                min = 0,
+                                                                value = fix_list$digits_y
                                                         ),
                                                         
                                                         # Select color and transparency of bars
@@ -1022,8 +1061,7 @@ ui <- fluidPage(
                                                 
                                                 # Show error message if no data
                                                 tags$br(),
-                                                uiOutput("gr_bar_out_query_result"),
-                                                
+
                                                 # Plots' dynamic UI
                                                 uiOutput("gr_bar_out_plots") %>% withSpinner(type = 3, 
                                                         color = fix_list$col_spinner, 
@@ -1052,6 +1090,45 @@ ui <- fluidPage(
                                                         
                                                         h4("Plot parameters"),
                                                         
+                                                        # Select countries
+                                                        pickerInput(
+                                                                inputId = "gr_mult_id_ctries",
+                                                                label = "Select countries/regions", 
+                                                                choices = c(""),
+                                                                options = list(size = 15,
+                                                                        `actions-box` = TRUE),
+                                                                multiple = TRUE
+                                                        ),
+                                                        
+                                                        # Select variables
+                                                        pickerInput(
+                                                                inputId = "gr_mult_id_vars",
+                                                                label = "Select variables", 
+                                                                choices = c(""),
+                                                                options = list(size = 15,
+                                                                        `actions-box` = TRUE),
+                                                                multiple = TRUE
+                                                        ),
+                                                        
+                                                        # Select statistic
+                                                        pickerInput(
+                                                                inputId = "gr_mult_id_stat",
+                                                                label = "Select measure", 
+                                                                choices = stats_vec,
+                                                                multiple = FALSE
+                                                        ),
+                                                        
+                                                        # Select range
+                                                        sliderInput(
+                                                                inputId = "gr_mult_id_time_range",
+                                                                label = "Select range",
+                                                                sep = "",
+                                                                min = def_list$time_range_start,
+                                                                max = def_list$time_range_end,
+                                                                step = 1,
+                                                                value = c(def_list$time_range_start, def_list$time_range_end)
+                                                        )
+                                                                
                                                 ),
                                                 
                                                 wellPanel( 
@@ -1060,11 +1137,152 @@ ui <- fluidPage(
                                                         
                                                         h4("Display options"),
                                                         
+                                                        # Include title
+                                                        materialSwitch(
+                                                                inputId = "gr_mult_id_title",
+                                                                label = "Include title",
+                                                                value = TRUE,
+                                                                status = "primary",
+                                                                right = TRUE
+                                                        ),
+                                                        
+                                                        # Include Y-axis units
+                                                        materialSwitch(
+                                                                inputId = "gr_mult_id_yaxis",
+                                                                label = "Include Y-axis units",
+                                                                value = TRUE,
+                                                                status = "primary",
+                                                                right = TRUE
+                                                        ),
+                                                        
+                                                        # Include source
+                                                        materialSwitch(
+                                                                inputId = "gr_mult_id_source",
+                                                                label = "Include source",
+                                                                value = TRUE,
+                                                                status = "primary",
+                                                                right = TRUE
+                                                        ),
+                                                        
+                                                        # Include data labels
+                                                        materialSwitch(
+                                                                inputId = "gr_mult_id_data_labels",
+                                                                label = "Include data labels",
+                                                                value = TRUE,
+                                                                status = "primary",
+                                                                right = TRUE
+                                                        ),
+                                                        
+                                                        # Include subperiods
+                                                        conditionalPanel(
+                                                                condition = "input.in_id_time_subper == true",
+                                                                materialSwitch (inputId = "gr_mult_id_time_subper",
+                                                                        label = "Include subperiods",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                )
+                                                        ),
+                                                        
+                                                        # Transform data to Trillion/Billion/Million/Thousands
+                                                        materialSwitch(
+                                                                inputId = "gr_mult_id_transform_zeros",
+                                                                label = "Transform data to Trillion/Billion/Million/Thousands",
+                                                                value = TRUE,
+                                                                status = "primary",
+                                                                right = TRUE
+                                                        ),
+                                                        
+                                                        # Transform data to logs (applies only to positive series)
+                                                        materialSwitch(
+                                                                inputId = "gr_mult_id_transform_log",
+                                                                label = "Transform data to logs (applies only to positive series)",
+                                                                value = FALSE,
+                                                                status = "primary",
+                                                                right = TRUE
+                                                        ),
+                                                        
+                                                        # Change country names to short
+                                                        materialSwitch(
+                                                                inputId = "gr_mult_id_ctry_short",
+                                                                label = "Short country names (ISO 3)",
+                                                                value = TRUE,
+                                                                status = "primary",
+                                                                right = TRUE
+                                                        ),
+                                                        
+                                                        # Number of digits
+                                                        numericInput(
+                                                                inputId = "gr_mult_id_digits",
+                                                                label = "Number of digits",
+                                                                min = 0,
+                                                                value = fix_list$digits
+                                                        ),
+                                                        
+                                                        # Number of digits Y-axis
+                                                        numericInput(
+                                                                inputId = "gr_mult_id_digits_y",
+                                                                label = "Number of digits",
+                                                                min = 0,
+                                                                value = fix_list$digits_y
+                                                        ),
+                                                        
+                                                        # Select font
+                                                        pickerInput(
+                                                                inputId = "gr_mult_id_font",
+                                                                label = "Select font",
+                                                                choices = font_list,
+                                                                selected = fix_list$font,
+                                                                choicesOpt = list(
+                                                                        content = c("<div style='font-family: Calibri'>Calibri</div>", 
+                                                                                "<div style='font-family: sans'>Arial</div>", 
+                                                                                "<div style='font-family: mono'>Courier</div>", 
+                                                                                "<div style='font-family: serif'>TimesNewRoman</div>"))
+                                                        ),
+                                                        
+                                                        # Select color palette
+                                                        conditionalPanel(
+                                                                condition = "input.gr_mult_id_time_subper == true",
+                                                                uiOutput('gr_mult_id_color_ui')
+                                                        ),
+                                                        
+                                                        conditionalPanel(
+                                                                condition = "input.gr_mult_id_time_subper == false",
+                                                                colourpicker::colourInput(
+                                                                        inputId = "gr_mult_id_color",
+                                                                        label = "Select color and transparency of bars",
+                                                                        value = fix_list$col_graphs_mult,
+                                                                        allowTransparent = TRUE,
+                                                                        closeOnClick = TRUE)
+                                                        ),
+                                                        
+                                                        # Select legend position
+                                                        pickerInput(
+                                                                inputId = "gr_mult_id_legend_pos",
+                                                                label = "Select legends position", 
+                                                                choices = position_list,
+                                                                selected = "top",
+                                                                multiple = FALSE
+                                                        )
                                                 )
                                                 
                                         ),
                                         mainPanel(
                                                 
+                                                # Show error message if no data
+                                                tags$br(),
+                                                
+                                                # Plots' dynamic UI
+                                                uiOutput("gr_mult_out_plots") %>% withSpinner(type = 3, 
+                                                        color = fix_list$col_spinner, 
+                                                        color.background = "white"),
+                                                helpText("Select download option (zipped .png files)"),
+                                                
+                                                # Download graphs options
+                                                downloadButton("gr_mult_download_large", "Long Plots"),
+                                                downloadButton("gr_mult_download_small", "Small Plots"),
+                                                tags$br(),
+                                                tags$br()
                                         )
                                 )
                         )
@@ -1130,12 +1348,13 @@ ui <- fluidPage(
                                 )
                         )
                 )
-        
         )
 )
 
 # server.r ----
 server <- function(input, output, session) {
+        
+        ## Data tab ----        
 
         # Update inputs based on other inputs
         
@@ -1353,6 +1572,18 @@ server <- function(input, output, session) {
                 met_all = initial_wdi_df_meta
                 
         )
+        
+        # Create reactive values for plot lists
+        
+        rv_plots <- reactiveValues(
+                
+                bar = list(),
+                mult = list(),
+                line = list(),
+                scat = list
+                
+        )
+        
         
         # Listen to any changes in inputs
         # This reactive function will be invalidated (and invalidate everything that depends on it) 
@@ -2155,7 +2386,7 @@ server <- function(input, output, session) {
         output$out_summary <- renderUI({
                 
                 # Reshape and select data
-                aux <- dcast(rv_df$dat_all, Ctry_iso + Year ~ Var_name, value.var="Value")
+                aux <- reshape2::dcast(rv_df$dat_all, Ctry_iso + Year ~ Var_name, value.var="Value")
                 # Print summary
                 print(dfSummary(aux), headings = FALSE, method = 'render', bootstrap.css = FALSE,
                         graph.magnif = 0.75, valid.col = FALSE, style = "grid")
@@ -2166,11 +2397,11 @@ server <- function(input, output, session) {
         output$out_summary_missing <- renderPlot({
                 
                 # Reshape and select data
-                aux <- dcast(rv_df$dat_all, Ctry_iso + Year ~ Var_name, value.var="Value")
+                aux <- reshape2::dcast(rv_df$dat_all, Ctry_iso + Year ~ Var_name, value.var="Value")
                 
                 # Create plot
                 p <- prepare_missing_values_graph(aux, ts_id = "Year")
-                print(str(p))
+
                 p
         })
         
@@ -2221,7 +2452,665 @@ server <- function(input, output, session) {
                 }
         )
                 
+        ## Bar plots - Single country tab ----
+        
+        ### Update inputs ----
+        observeEvent(c(input$in_id_update, input$in_id_reset_confirm) , {
+                
+                # Country input
+                aux_ctry <- unique(rv_df$dat_all$Country)
+                flags_df <- filter(flags_df, country %in% aux_ctry)
+                aux_ctry_group <- unique(rv_df$dat_all %>% select(Country, Ctry_group, Ctry_group_num))
+                flags_df <- merge(
+                        x = flags_df,
+                        y = aux_ctry_group,
+                        by.x = c("country"),
+                        by.y = c("Country"),
+                        all.x = TRUE)
+                
+                flags_df <- flags_df[order(
+                        flags_df$Ctry_group_num,
+                        flags_df$country), ]
 
+                flags_df$Ctry_slash_Group <- paste(flags_df$country, flags_df$Ctry_group, sep=" | ")
+                
+                updatePickerInput(
+                        session = session,
+                        inputId = "gr_bar_id_ctries_ctry",
+                        choices = flags_df$country,
+                        choicesOpt = list(content =  
+                                        mapply(flags_df$Ctry_slash_Group, flags_df$URL, FUN = function(x, y) {
+                                                HTML(paste(
+                                                        tags$img(src = y, width = 20, height = 15),
+                                                        x
+                                                ))
+                                        }, SIMPLIFY = FALSE, USE.NAMES = FALSE)
+                        ),
+                        selected = aux_ctry[1],
+                        options = list(size = 15,
+                                `live-search` = TRUE)
+                )
+                
+                # Variable input
+                aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep=" | "))
+                
+                updatePickerInput(
+                        session = session,
+                        inputId = 'gr_bar_id_vars',
+                        label = "Select variables",
+                        choices = aux_var,
+                        selected = aux_var,
+                        options = list(size = 15,
+                                `actions-box` = TRUE)
+                )
+                
+                # Time input
+                updateSliderInput(
+                        session= session,
+                        inputId = "gr_bar_id_time_range",
+                        min = rv_input$time_range_start,
+                        max = rv_input$time_range_end,
+                        step = 1,
+                        value = c(rv_input$time_range_start, rv_input$time_range_end))
+                
+                # Subperiod average
+                updateMaterialSwitch(
+                        session= session,
+                        inputId="gr_bar_id_time_subper_avg",
+                        value = FALSE)
+
+        })
+        
+        ### Plots ----
+        
+        # Prep data
+        prepped_data_bar <- reactive({
+                
+                graph_input <- prep_data_for_graphs(
+                        df = rv_df$dat_all,
+                        vars = input$gr_bar_id_vars,
+                        ctries = input$gr_bar_id_ctries_ctry,
+                        t_start = input$gr_bar_id_time_range[1],
+                        t_end = input$gr_bar_id_time_range[2]
+                )
+                
+                return(graph_input)
+                
+
+        })
+        
+        
+        # Create plots
+        createUI_bar <- function(table) {
+                
+                if(!all(is.na(table$Value))){
+                
+                        # Parameters for plot
+                        
+                        # Input for number of digits to be used in y-axis and data labels
+                        digits_num <- input$gr_bar_id_digits
+                        
+                        # Input for trillions/billions/millions/thousands transformation
+                        accuracy_yaxis <- 1/10^(input$gr_bar_id_digits_y)
+                        units_zeros <- c("Trillions", "Billions", "Millions", "Thousands")
+                        
+                        # Input for title, subtitle Y-axis and source
+                        title_text <- ""
+                        
+                        subtitle_text <- ""
+                        
+                        title_text <- if(input$gr_bar_id_title){
+                                paste0(unique(table$Var_name), " - ", unique(table$Country))}
+                        
+                        yaxis_units <- if(input$gr_bar_id_yaxis){
+                                        if(is.na(unique(table$Units))){NULL} else {unique(table$Units)}
+                                } else {NULL}
+        
+                        if(input$gr_bar_id_source){
+                                graph_source <- unique(table$Database)
+                                if(graph_source=="WDI"){
+                                        graph_source<- "World Development Indicators"}
+                                }
+                        
+                        # Year axis intervals: if less than 30 years covered, then include all years, otherwise every 2 years 
+                        intervals <- ifelse(input$gr_bar_id_time_range[2] - input$gr_bar_id_time_range[1] < 30, 1, 2)
+                        
+                        # Transform data: divide by trillions/billions/millions/thousands
+                        for (i in 4:1){
+                                if(input$gr_bar_id_transform_zeros & max(abs(table$Value), na.rm =TRUE)>(10^(3*i))){
+                                        if(input$gr_bar_id_title) {
+                                                subtitle_text <- paste(
+                                                        c(subtitle_text, units_zeros[5-i]), 
+                                                        collapse = "")
+                                                separator <- if(subtitle_text==""){""} else {", "}
+                                                if(input$gr_bar_id_yaxis){
+                                                        yaxis_units <- paste(
+                                                                c(yaxis_units, units_zeros[5-i]), 
+                                                                collapse = separator)
+                                                }
+                                        }
+                                        table$Value <- table$Value/(10^(3*i))
+                                }
+                        }
+                        
+                        # Log transform
+                        if(input$gr_bar_id_transform_log & min(table$Value, na.rm =TRUE)>0){
+                                subtitle_text <- paste(
+                                        c(subtitle_text, " (Log transformation)"), 
+                                        collapse = "")
+                                if(input$gr_bar_id_yaxis){                                                
+                                        yaxis_units <- paste(
+                                                c(yaxis_units, " (Log transformation)"), 
+                                                collapse = "")
+                                }
+                                table$Value <- log(table$Value)
+                        }
+
+                        
+                        # Create subperiod variables to include rectangles
+                        if(rv_input$time_subper & input$gr_bar_id_time_subper){
+                                
+                                # If 2 subperiods, then there are 3 cases
+                                if(rv_input$time_subper_num == 2){
+                                        
+                                        # Case 1 
+                                        if(input$gr_bar_id_time_range[1] < rv_input$time_limit_1 & input$gr_bar_id_time_range[2] > rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5, rv_input$time_limit_1+0.5), 
+                                                        Year_end=c(rv_input$time_limit_1+0.5, input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_1, rv_input$time_name_2)
+                                                )
+                                        }
+                                        # Case 2 
+                                        if(input$gr_bar_id_time_range[2] <= rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5), 
+                                                        Year_end=c(input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_1)
+                                                )
+                                        }
+                                        # Case 3
+                                        if(input$gr_bar_id_time_range[1] >= rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5), 
+                                                        Year_end=c(input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_2)
+                                                )
+                                        }
+                                }
+                                # If 3 subperiods, then there are 6 cases
+                                if(rv_input$time_subper_num == 3){
+                                        
+                                        # Case 1
+                                        if(input$gr_bar_id_time_range[1] < rv_input$time_limit_1 & input$gr_bar_id_time_range[2] > rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5, rv_input$time_limit_1+0.5, rv_input$time_limit_2+0.5), 
+                                                        Year_end=c(rv_input$time_limit_1+0.5, rv_input$time_limit_2+0.5,input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_1, rv_input$time_name_2, rv_input$time_name_3)
+                                                )
+                                        }
+                                        # Case 2
+                                        if(input$gr_bar_id_time_range[1] < rv_input$time_limit_1 & input$gr_bar_id_time_range[2] <= rv_input$time_limit_2 & input$gr_bar_id_time_range[2] > rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5, rv_input$time_limit_1+0.5), 
+                                                        Year_end=c(rv_input$time_limit_1+0.5, input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_1, rv_input$time_name_2)
+                                                )
+                                        }
+                                        # Case 3
+                                        if(input$gr_bar_id_time_range[1] >= rv_input$time_limit_1 & input$gr_bar_id_time_range[1] < rv_input$time_limit_2 & input$gr_bar_id_time_range[2] > rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5, rv_input$time_limit_2+0.5), 
+                                                        Year_end=c(rv_input$time_limit_2+0.5, input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_2, rv_input$time_name_3)
+                                                )
+                                        }
+                                        # Case 4
+                                        if(input$gr_bar_id_time_range[2] <= rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5), 
+                                                        Year_end=c(input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_1)
+                                                )
+                                        }
+                                        # Case 5
+                                        if(input$gr_bar_id_time_range[1] >= rv_input$time_limit_1 & input$gr_bar_id_time_range[2] <= rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5), 
+                                                        Year_end=c(input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_2)
+                                                )
+                                        }
+                                        # Case 6
+                                        if(input$gr_bar_id_time_range[1] >= rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5), 
+                                                        Year_end=c(input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_3)
+                                                )
+                                        }
+                                }
+                                # If 4 subperiods, then there are 10 cases
+                                if(rv_input$time_subper_num == 4){
+                                        # Case 1
+                                        if(input$gr_bar_id_time_range[1] < rv_input$time_limit_1 & input$gr_bar_id_time_range[2] > rv_input$time_limit_3){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5, rv_input$time_limit_1+0.5, rv_input$time_limit_2+0.5, rv_input$time_limit_3+0.5), 
+                                                        Year_end=c(rv_input$time_limit_1+0.5, rv_input$time_limit_2+0.5, rv_input$time_limit_3+0.5,input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_1, rv_input$time_name_2, rv_input$time_name_3, rv_input$time_name_4)
+                                                )
+                                        }
+                                        # Case 2
+                                        if(input$gr_bar_id_time_range[1] < rv_input$time_limit_1 & input$gr_bar_id_time_range[2] <= rv_input$time_limit_3 & input$gr_bar_id_time_range[2] > rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5, rv_input$time_limit_1+0.5, rv_input$time_limit_2+0.5), 
+                                                        Year_end=c(rv_input$time_limit_1+0.5, rv_input$time_limit_2+0.5,input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_1, rv_input$time_name_2, rv_input$time_name_3)
+                                                )
+                                        }
+                                        # Case 3
+                                        if(input$gr_bar_id_time_range[1] >= input$in_id_time_limit_1 & input$gr_bar_id_time_range[1] < rv_input$time_limit_2 & input$gr_bar_id_time_range[2] > rv_input$time_limit_3){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5, rv_input$time_limit_2+0.5, rv_input$time_limit_3+0.5), 
+                                                        Year_end=c(rv_input$time_limit_2+0.5, rv_input$time_limit_3+0.5, input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_2, rv_input$time_name_3, rv_input$time_name_4)
+                                                )
+                                        }
+                                        # Case 4
+                                        if(input$gr_bar_id_time_range[1] < rv_input$time_limit_1 & input$gr_bar_id_time_range[2] <= rv_input$time_limit_2 & input$gr_bar_id_time_range[2] > rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5, rv_input$time_limit_1+0.5), 
+                                                        Year_end=c(rv_input$time_limit_1+0.5, input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_1, rv_input$time_name_2)
+                                                )
+                                        }
+                                        # Case 5
+                                        if(input$gr_bar_id_time_range[1] >= rv_input$time_limit_1 & input$gr_bar_id_time_range[1] < rv_input$time_limit_2 & input$gr_bar_id_time_range[2] <= rv_input$time_limit_3 & input$gr_bar_id_time_range[2] > rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5, rv_input$time_limit_2+0.5), 
+                                                        Year_end=c(rv_input$time_limit_2+0.5, input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_2, rv_input$time_name_3)
+                                                )
+                                        }
+                                        # Case 6
+                                        if(input$gr_bar_id_time_range[1] >= rv_input$time_limit_2 & input$gr_bar_id_time_range[1] < rv_input$time_limit_3 & input$gr_bar_id_time_range[2] > rv_input$time_limit_3){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5, rv_input$time_limit_3+0.5), 
+                                                        Year_end=c(rv_input$time_limit_3+0.5, input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_3, rv_input$time_name_4)
+                                                )
+                                        }
+                                        # Case 7
+                                        if(input$gr_bar_id_time_range[2] <= rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5), 
+                                                        Year_end=c(input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_1)
+                                                )
+                                        }
+                                        # Case 8
+                                        if(input$gr_bar_id_time_range[1] >= rv_input$time_limit_1 & input$gr_bar_id_time_range[2] <= rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5), 
+                                                        Year_end=c(input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_2)
+                                                )
+                                        }
+                                        # Case 9
+                                        if(input$gr_bar_id_time_range[1] >= rv_input$time_limit_2 & input$gr_bar_id_time_range[2] <= rv_input$time_limit_3){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5), 
+                                                        Year_end=c(input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_3)
+                                                )
+                                        }
+                                        # Case 10
+                                        if(input$gr_bar_id_time_range[1] >= rv_input$time_limit_3){
+                                                rectangle_text <- data.frame(
+                                                        Year_start=c(input$gr_bar_id_time_range[1]-0.5), 
+                                                        Year_end=c(input$gr_bar_id_time_range[2]+0.5),
+                                                        Period=c(rv_input$time_name_4)
+                                                )
+                                        }
+                                }
+                                
+                                vertical_lines <- rectangle_text$Year_end
+                                vertical_lines <- vertical_lines[1:(length(vertical_lines)-1)]
+                        }
+                        
+                        # Actually create plot
+                        p <- ggplot(table, aes(x = Year, y = Value)) +
+                                # Define type of graph: bar 
+                                geom_bar(stat="identity", 
+                                        fill=input$gr_bar_id_color,
+                                        colour="black"
+                                )+
+                                # Include title, subtitle, source and Y-axis title
+                                labs(title = title_text,
+                                        subtitle = subtitle_text,
+                                        caption = if(input$gr_bar_id_source){paste("Source: ", graph_source, ".", sep="")},
+                                        y = if(input$gr_bar_id_yaxis){yaxis_units} else {NULL}
+                                )+
+                                # Aesthetics
+                                theme(panel.background = element_blank(),
+                                        panel.border = element_blank(),
+                                        panel.grid.major = element_blank(),
+                                        panel.grid.minor = element_blank(),
+                                        plot.title = element_text(size = 12, face = "bold"),
+                                        plot.margin = margin(0.25, 0.25, 1, 0.25, "cm"),
+                                        plot.caption = element_text(hjust = 0, size = 10),
+                                        axis.ticks.x = element_blank(),
+                                        axis.ticks.y = element_blank(),
+                                        axis.text.x = element_text(colour = "black"),
+                                        axis.text.y = element_text(colour = "black"),
+                                        text = element_text(size=12,  family=input$gr_bar_id_font)
+                                )+
+                                # Define intervals of Year axis
+                                scale_x_continuous(name="",
+                                        breaks = seq(input$gr_bar_id_time_range[1],
+                                                input$gr_bar_id_time_range[2],
+                                                by = intervals)
+                                )+
+                                coord_cartesian(xlim = c(input$gr_bar_id_time_range[1], input$gr_bar_id_time_range[2]))
+                        
+                        
+                        # Include data labels        
+                        if(input$gr_bar_id_data_labels){p <- p + geom_text(
+                                aes(
+                                        x = Year,
+                                        y = Value,
+                                        label = format(round(as.numeric(Value), digits_num), 
+                                                nsmall=digits_num, big.mark=",")),
+                                vjust= ifelse(table$Value <0 , 1.5, -0.5),
+                                hjust= 0.5,
+                                size = 3,
+                                family=input$gr_bar_id_font)
+                        }
+                        
+                        # Increase range of Y axis to make room for the box indicating subperiod
+                        y_min <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
+                        y_max <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
+                        y_range <- y_max - y_min
+                        
+                        # Include thousands separating comma in Y-axis
+                        p <- p + scale_y_continuous(name=  yaxis_units,
+                                labels = comma_format(accuracy = accuracy_yaxis, big.mark = ","),
+                                breaks=pretty_breaks(),
+                                limits = c(y_min, y_max+(y_range*0.1))
+                        )
+                        
+                        # Get new axis limits that will be used as inputs to define the size of the subperiod rectangles
+                        y_min_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
+                        y_max_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
+                        y_range_new <- y_max - y_min
+                        
+                        #Define other parameters that will be used as inputs to define the size of the subperiod rectangles
+                        size_factor <- 0.08
+                        ALPHA <- 0.15
+                        
+                        # Subperiod rectangles, their labels and the dotted lines separating 
+                        if(rv_input$time_subper & input$gr_bar_id_time_subper){
+                                p <- p + 
+                                        geom_rect(data = rectangle_text,
+                                                aes(NULL, NULL, xmin=-Inf, xmax=Inf),
+                                                ymin = y_max_new - y_range_new*size_factor ,
+                                                ymax = y_max_new,
+                                                colour = NA,
+                                                fill="grey",
+                                                alpha = 0.5
+                                        )+
+                                        geom_label(data=rectangle_text,
+                                                aes(x = Year_start+(Year_end-Year_start)/2, 
+                                                        y = y_max_new*ALPHA + (y_max_new - y_range_new*size_factor)*(1-ALPHA), 
+                                                        label = Period,
+                                                        family = input$gr_bar_id_font
+                                                ),
+                                                size=3.3,
+                                                fill = "grey",
+                                                alpha = 0,
+                                                label.size = NA,
+                                                hjust = "center", 
+                                                vjust = "bottom")
+                                
+                                for (i in vertical_lines) {
+                                        p <- p + geom_segment(x = i, 
+                                                y = y_max_new,
+                                                xend = i, 
+                                                yend = y_max_new - y_range_new * size_factor,
+                                                colour = "white",
+                                                size = 1,
+                                                alpha = 1) +
+                                                geom_segment(x = i, 
+                                                        y = y_max_new - y_range_new*size_factor,
+                                                        xend = i, 
+                                                        yend = -Inf,
+                                                        colour = "grey",
+                                                        linetype = "dotted")
+                                }
+                        }
+                        
+                        # Period average lines
+                        if(input$gr_bar_id_time_subper_avg){
+                                if(rv_input$time_subper & input$gr_bar_id_time_subper){
+                                        vec_average <- table %>%
+                                                group_by(Period) %>%
+                                                summarise_at(vars(Value),
+                                                        list(Value_avg = mean),
+                                                        na.rm=T)
+                                        vec_average <- as.data.frame(vec_average)
+                                        
+                                        rectangle_text <- merge(x = rectangle_text, 
+                                                y = as.data.frame(vec_average), 
+                                                by = "Period")
+                                        
+                                        for(i in 1:nrow(rectangle_text)){
+                                                yvalue <- vec_average %>% filter(Period == rectangle_text$Period[i]) %>% select(Value_avg)
+                                                period_average <- yvalue[[1]]
+                                                p <- p + geom_segment(x=rectangle_text$Year_start[i],
+                                                        y = period_average,
+                                                        xend=rectangle_text$Year_end[i],
+                                                        yend=period_average)
+                                        }
+                                        p <- p + geom_label(
+                                                data=rectangle_text,
+                                                aes(x = Year_start+(Year_end-Year_start)/2,
+                                                        y = (y_max_new - y_range_new*size_factor) - (y_max_new - (y_max_new*ALPHA + (y_max_new - y_range_new*size_factor)*(1-ALPHA))),
+                                                        label = paste("Average: ", format(round(as.numeric(Value_avg), digits_num), nsmall=digits_num, big.mark=","), sep = ""),
+                                                        family = input$gr_bar_id_font
+                                                ),
+                                                size=3.3,
+                                                alpha = 0,
+                                                label.size = NA,
+                                                hjust = "center",
+                                                vjust = "bottom")
+                                        
+                                }  else {
+                                        vec_average <- table %>%
+                                                summarise_at(vars(Value),
+                                                        list(Value_avg = mean),
+                                                        na.rm=T)
+                                        yvalue <- vec_average %>% select(Value_avg)
+                                        yvalue <- yvalue[[1]]
+                                        p <- p + geom_segment(x=rectangle_text$Year_start[i],
+                                                y = yvalue,
+                                                xend=rectangle_text$Year_end[i],
+                                                yend=yvalue)
+                                }
+                        }
+                        
+                        # Append plot to the list of plots
+                        rv_plots$bar <- isolate(list.append(rv_plots$bar, p))
+                        
+                        # Show plot
+                        renderPlot(p)
+                
+                }
+        }
+        
+        # Call Prep data and Create plots 
+        output$gr_bar_out_plots <- renderUI({
+                
+                rv_plots$bar <- list()
+                
+                pd <- req(prepped_data_bar())
+                
+                tagList(map(pd, ~ createUI_bar(.)))
+
+        })
+        
+        # Plot download handlers ----
+        
+        # Download plots as png zipped - large
+        output$gr_bar_download_large <- downloadHandler(
+                filename = 'gr_bar_out_plots_large.zip',
+                content = function( file){
+                        
+                        # Set temporary working directory
+                        owd <- setwd(tempdir())
+                        on.exit(setwd(owd))
+                        
+                        # Save the plots
+                        vector_plots <- vector()
+                        for (i in 1:length(rv_plots$bar)){
+                                name <- paste("barplot_large", i, ".png", sep="")
+                                ggsave(name, 
+                                        plot = rv_plots$bar[[i]], 
+                                        device = "png",
+                                        width = 11.5, 
+                                        height = 5.75,
+                                        units = "in")
+                                vector_plots <- c(vector_plots, paste("barplot_large", i, ".png", sep=""))
+                                
+                        }
+                        
+                        # Zip them up
+                        zip(file, vector_plots)
+                }
+        )
+        
+        
+        # Download plots as png zipped - small
+        output$gr_bar_download_small <- downloadHandler(
+                filename = 'gr_bar_out_plots_small.zip',
+                content = function( file){
+                        
+                        # Set temporary working directory
+                        owd <- setwd(tempdir())
+                        on.exit(setwd(owd))
+                        
+                        # Save the plots
+                        vector_plots <- vector()
+                        for (i in 1:length(rv_plots$bar)){
+                                name <- paste("barplot_small", i, ".png", sep="")
+                                
+                                # Increase intervals in X axis in small plots
+                                intervals <- ifelse(max(input$gr_bar_id_time_range)-min(input$gr_bar_id_time_range)<30, 2, 4)
+                                rv_plots$bar[[i]] <- rv_plots$bar[[i]] + 
+                                        scale_x_continuous(name="",
+                                                breaks = seq(min(input$gr_bar_id_time_range),
+                                                        max(input$gr_bar_id_time_range),
+                                                        by = intervals))
+                                
+                                ggsave(name, 
+                                        plot = rv_plots$bar[[i]], 
+                                        device = "png",
+                                        width = 5.75, 
+                                        height = 5.75,
+                                        units = "in")
+                                vector_plots <- c(vector_plots, paste("barplot_small", i, ".png", sep=""))
+                                
+                        }
+                        
+                        # Zip them up
+                        zip(file, vector_plots)
+                }
+        )
+        
+
+        ## Bar plots - Multiple country tab ----                
+        
+        
+        ### Update inputs ----
+        observeEvent(c(input$in_id_update, input$in_id_reset_confirm), {
+                
+                # Country input
+                aux_ctry <- unique(rv_df$dat_all %>% select(Country, Ctry_group, Ctry_group_num))
+                aux_ctry$Ctry_slash_Group <- paste(aux_ctry$Country, aux_ctry$Ctry_group, sep=" | ")
+                aux_ctry <- aux_ctry[order(
+                        aux_ctry$Ctry_group_num,
+                        aux_ctry$Country), ]
+                ctry_choices <- as.list(aux_ctry$Country)
+                names(ctry_choices) <- aux_ctry$Ctry_slash_Group
+                ctry_select <- c(rv_input$ctries_ctry, rv_input$ctries_str, rv_input$ctries_asp, rv_input$ctries_reg)
+                
+                updatePickerInput(
+                        session = session,
+                        inputId = 'gr_mult_id_ctries',
+                        choices = ctry_choices,
+                        selected = ctry_select,
+                        options = list(size = 15,
+                                `actions-box` = TRUE)
+                )
+                
+                # Variable input
+                aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep=" | "))
+                
+                updatePickerInput(
+                        session = session,
+                        inputId = 'gr_mult_id_vars',
+                        label = "Select variables",
+                        choices = aux_var,
+                        selected = aux_var,
+                        options = list(size = 15,
+                                `actions-box` = TRUE)
+                )
+                
+                # Time input
+                updateSliderInput(
+                        session= session,
+                        inputId = "gr_mult_id_time_range",
+                        min = rv_input$time_range_start,
+                        max = rv_input$time_range_end,
+                        step = 1,
+                        value = c(rv_input$time_range_start, rv_input$time_range_end)
+                )
+
+        })
+        
+        ### Plots ----        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        ## Line plots ----                
+        
+        ### Update inputs ----
+        
+        observeEvent(c(input$in_id_update, input$in_id_reset_confirm) , {
+               
+                
+                
+                 
+        })
+        
+        ### Plots ----   
+        
         
 }
 
