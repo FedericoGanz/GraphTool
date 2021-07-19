@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2021-07-08T20:14:12.551Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" etag="hXtf310mIBdlbU68jFKt" version="14.8.5" type="github">
+<mxfile host="app.diagrams.net" modified="2021-07-13T05:52:31.315Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" etag="Ab1nVi1y8EPCrJbb6ueV" version="14.8.5" type="github">
   <diagram name="Page-1" id="9f46799a-70d6-7492-0946-bef42562c5a5">
     <mxGraphModel dx="5730" dy="4910" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="4000" pageHeight="4000" math="0" shadow="0">
       <root>
@@ -42,7 +42,7 @@
           <mxGeometry y="88" width="160" height="102" as="geometry" />
         </mxCell>
         <mxCell id="pImH6Mx9zYfji8Ey0wbx-19" value="Common to every session" style="rounded=1;whiteSpace=wrap;html=1;startSize=26;rotation=-90;fontSize=22;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
-          <mxGeometry x="-700" y="738.75" width="1237.5" height="80" as="geometry" />
+          <mxGeometry x="-1220" y="738.75" width="1237.5" height="80" as="geometry" />
         </mxCell>
         <mxCell id="pImH6Mx9zYfji8Ey0wbx-45" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=12;startSize=26;strokeWidth=2;" edge="1" parent="1" source="pImH6Mx9zYfji8Ey0wbx-22" target="pImH6Mx9zYfji8Ey0wbx-38">
           <mxGeometry relative="1" as="geometry" />
@@ -182,7 +182,7 @@
             <mxRectangle x="420" y="83" width="100" height="26" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="pImH6Mx9zYfji8Ey0wbx-73" value="Id: in_id_countries_ctry&lt;br&gt;Type:&amp;nbsp;pickerInput&lt;br&gt;Choices: &lt;b&gt;flags_df$country&lt;/b&gt;&lt;br&gt;Select:&amp;nbsp;&lt;b&gt;def_ctries_ctry&lt;/b&gt;&lt;br&gt;Output: vector length 1&lt;br&gt;Updates: TRUE" style="text;html=1;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;cloneable=1;connectable=0;allowArrows=0;" vertex="1" parent="pImH6Mx9zYfji8Ey0wbx-72">
+        <mxCell id="pImH6Mx9zYfji8Ey0wbx-73" value="Id: in_id_countries_ctry&lt;br&gt;Type:&amp;nbsp;pickerInput&lt;br&gt;Choices: &lt;b&gt;flags_df$country&lt;/b&gt;&lt;br&gt;Select:&amp;nbsp;&lt;b&gt;&lt;font color=&quot;#9673a6&quot;&gt;def_ctries_ctry&lt;/font&gt;&lt;/b&gt;&lt;br&gt;Output: vector length=1&lt;br&gt;Updates: TRUE" style="text;html=1;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;cloneable=1;connectable=0;allowArrows=0;" vertex="1" parent="pImH6Mx9zYfji8Ey0wbx-72">
           <mxGeometry y="26" width="160" height="104" as="geometry" />
         </mxCell>
         <mxCell id="pImH6Mx9zYfji8Ey0wbx-74" value="" style="line;html=1;strokeWidth=1;fillColor=#d5e8d4;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#82b366;" vertex="1" parent="pImH6Mx9zYfji8Ey0wbx-72">
@@ -285,7 +285,7 @@
             <mxRectangle x="420" y="83" width="100" height="26" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="pImH6Mx9zYfji8Ey0wbx-104" value="Id: in_id_countries_str&lt;br&gt;Type:&amp;nbsp;pickerInput&lt;br&gt;Choices: &lt;b&gt;flags_df$country&lt;/b&gt;&lt;br&gt;Select:&amp;nbsp;&lt;b&gt;def_ctries_ctry&lt;/b&gt;&lt;br&gt;Output: vector length 1&lt;br&gt;Updates: TRUE" style="text;html=1;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;cloneable=1;connectable=0;allowArrows=0;" vertex="1" parent="pImH6Mx9zYfji8Ey0wbx-103">
+        <mxCell id="pImH6Mx9zYfji8Ey0wbx-104" value="Id: in_id_countries_str&lt;br&gt;Type:&amp;nbsp;pickerInput&lt;br&gt;Choices: &lt;b&gt;flags_df$country&lt;/b&gt;&lt;br&gt;Select:&amp;nbsp;&lt;b&gt;&lt;font color=&quot;#9673a6&quot;&gt;def_ctries_ctry&lt;/font&gt;&lt;/b&gt;&lt;br&gt;Output: vector length 1&lt;br&gt;Updates: TRUE" style="text;html=1;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;cloneable=1;connectable=0;allowArrows=0;" vertex="1" parent="pImH6Mx9zYfji8Ey0wbx-103">
           <mxGeometry y="26" width="160" height="104" as="geometry" />
         </mxCell>
         <mxCell id="pImH6Mx9zYfji8Ey0wbx-105" value="" style="line;html=1;strokeWidth=1;fillColor=#d5e8d4;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#82b366;" vertex="1" parent="pImH6Mx9zYfji8Ey0wbx-103">
@@ -293,6 +293,20 @@
         </mxCell>
         <mxCell id="pImH6Mx9zYfji8Ey0wbx-106" value="Description: The selected country has to be one of the 218 available (no aggregates) in WDI." style="text;html=1;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;allowArrows=0;connectable=0;strokeWidth=0;" vertex="1" parent="pImH6Mx9zYfji8Ey0wbx-103">
           <mxGeometry y="138" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="pImH6Mx9zYfji8Ey0wbx-112" value="def_list" style="swimlane;html=1;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeLast=0;collapsible=1;marginBottom=0;swimlaneFillColor=#E1D5E7;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;fontFamily=Verdana;fontSize=12;arcSize=15;resizable=1;resizeWidth=0;resizeHeight=0;rotatable=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="-240" y="160" width="450" height="470" as="geometry">
+            <mxRectangle x="420" y="83" width="100" height="26" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pImH6Mx9zYfji8Ey0wbx-113" value="Class: list&lt;br&gt;Elements: 23" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;cloneable=1;connectable=0;allowArrows=0;" vertex="1" parent="pImH6Mx9zYfji8Ey0wbx-112">
+          <mxGeometry y="26" width="450" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="pImH6Mx9zYfji8Ey0wbx-114" value="" style="line;html=1;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#9673A6;" vertex="1" parent="pImH6Mx9zYfji8Ey0wbx-112">
+          <mxGeometry y="70" width="450" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="pImH6Mx9zYfji8Ey0wbx-115" value="Elements&lt;br&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; ctries_ctry = &quot;Pakistan&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; ctries_str = c(&quot;Bangladesh&quot;, &quot;Egypt, Arab Rep.&quot;, &quot;Ethiopia&quot;, &quot;India&quot;),&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; ctries_asp = c(&quot;Indonesia&quot;, &quot;Mexico&quot;, &quot;Turkey&quot;, &quot;Vietnam&quot;),&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; ctries_reg = &quot;South Asia&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; ctries_all = FALSE,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; time_range_start = 2000,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; time_range_end = 2019,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; time_subper = TRUE,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; time_subper_num = 3,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; time_limit_1 = 2008,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; time_limit_2 = 2014,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; time_limit_3 = 2018,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; time_name_1 = &quot;Historical&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; time_name_2 = &quot;Recent past&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; time_name_3 = &quot;Present&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; time_name_4 = &quot;Period 4&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; wdi_vars = c(&quot;GDP growth (annual %) | NY.GDP.MKTP.KD.ZG&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &quot;Inflation, consumer prices (annual %) | FP.CPI.TOTL.ZG&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; &quot;GDP per capita, PPP (current international $) | NY.GDP.PCAP.PP.CD&quot;),&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; col_spinner = &quot;#009FDA&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; col_graphs_bar = &quot;#EC7063&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; col_graphs_mult = &quot;#EC7063&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; col_graphs_line = &quot;#FC4024&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; col_palette_mult = &quot;Oranges&quot;,&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; font = &quot;Calibri&quot;&amp;nbsp;&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;whiteSpace=wrap;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;allowArrows=0;connectable=0;" vertex="1" parent="pImH6Mx9zYfji8Ey0wbx-112">
+          <mxGeometry y="78" width="450" height="392" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
