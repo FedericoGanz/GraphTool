@@ -29,6 +29,7 @@ library(grid)
 library(gridExtra)
 library(extrafont)
 library(Jmisc)
+library(ggrepel)
 
 ## Fix variables ----
 
@@ -125,34 +126,49 @@ nice_wdi_fun <- function(countries_ctry,
         countries_str, 
         countries_asp, 
         countries_reg, 
-        countries_all = FALSE, 
+        countries_all = FALSE,
+        regions_all = FALSE,
         variables, 
         start_year, 
         end_year){
         
-        
         # Print messages indicating selected parameters
         print("Starting WDI download process")
         print("(1/3) Selected countries/regions (ISO-2):")
-        if(countries_all){
-                message_ctries <- c("All")
-        } else {message_ctries <- ctry_df[ctry_df[ , "country"] %in% c(countries_ctry, countries_str, countries_asp, countries_reg), "iso2c"]}
-        print(message_ctries)
+        
+        if(countries_all == TRUE & regions_all == TRUE){
+                countries <- c(ctry_vec, reg_vec)
+                ctries_select_iso2 <- c("all")
+        }
+        
+        if(countries_all == FALSE & regions_all == FALSE){
+                countries <- c(countries_ctry, countries_str, countries_asp, countries_reg)
+                ctries_select_iso2 <- ctry_df[ctry_df[ , "country"] %in% c(countries_ctry, countries_str, countries_asp, countries_reg), "iso2c"]
+        }
+        
+        if(countries_all == TRUE & regions_all == FALSE){
+                countries <- c(ctry_vec, countries_reg)
+                ctries_select_iso2 <- ctry_df[ctry_df[ , "country"] %in% c(ctry_vec, countries_reg), "iso2c"]
+        }
+        
+        if(countries_all == FALSE & regions_all == TRUE){
+                countries <- c(countries_ctry, countries_str, countries_asp, reg_vec)
+                # For some reason I can't understand, the following does not work (WDI function does not download the data). I set it to "all" and then filter after data is downloaded
+                # ctries_select_iso2 <- ctry_df[ctry_df[ , "country"] %in% c(countries_ctry, countries_str, countries_asp, reg_vec), "iso2c"]
+                ctries_select_iso2 <- c("all")
+                
+        }
+        
+        print(ctries_select_iso2)
         print("(2/3) Selected variables (code):")
         print(variables)
         print("(3/3) Year range:")
         print(paste0(start_year, " - ", end_year))
 
-        # Create iso2c countries vector 
-        countries <- c(countries_ctry, countries_str, countries_asp, countries_reg)
-        ctries_select_iso2 <- ctry_df[ctry_df[ , "country"] %in% countries, "iso2c"]
-        if((length(ctries_select_iso2) == 0 & countries_all == FALSE) | length(variables) == 0){
+        if((length(ctries_select_iso2) == 0 & countries_all == FALSE & regions_all == FALSE) | length(variables) == 0){
                 print("A WDI download parameter (countries or variable) is missing: no WDI data download")
                 return()
         }
-        if(countries_all == TRUE){
-                countries <- c(ctry_vec, reg_vec)
-                ctries_select_iso2 <- c("all")}
         
         # Download data from WDI
         raw_wdi <- WDI(
@@ -164,6 +180,11 @@ nice_wdi_fun <- function(countries_ctry,
                 cache = NULL,
                 latest = NULL,
                 language = "en")
+        
+        # Filter in case of regions_all selected but not ctries_all
+        if(countries_all == FALSE & regions_all == TRUE){
+                raw_wdi <- raw_wdi[raw_wdi$country %in% countries, ]
+        }
         
         # Store which variables were downloaded and which weren't
         vars_downloaded <- variables[variables %in% names(raw_wdi)]
@@ -428,6 +449,7 @@ def_list <- list(
         ctries_asp = c("Lesotho", "Mongolia", "Eswatini", "Tajikistan"),
         ctries_reg = "South Asia",
         ctries_all = FALSE,
+        regs_all = FALSE,
         time_range_start = 2000,
         time_range_end = 2020,
         time_subper = TRUE,
@@ -453,6 +475,7 @@ reset_list <- list(
         ctries_asp = character(0),
         ctries_reg = character(0),
         ctries_all = FALSE,
+        regs_all = FALSE,
         ctries_select = character(0),
         ctries_select_iso2 = character(0),
         time_range_start = 2000,
@@ -490,11 +513,26 @@ initial_wdi_df <- nice_wdi_fun(countries_ctry = def_list$ctries_ctry,
         countries_asp = def_list$ctries_asp,
         countries_reg = def_list$ctries_reg,
         countries_all = def_list$ctries_all,
+        regions_all = def_list$regs_all,
         variables = variables,
         start_year = def_list$time_range_start, 
         end_year = def_list$time_range_end)
 
 initial_wdi_df_meta <- nice_wdi_fun_meta(initial_wdi_df)
+
+# Small country list
+small_country_filter_df <- nice_wdi_fun(countries_ctry = "",
+        countries_str = "",
+        countries_asp = "",
+        countries_reg = "",
+        countries_all = TRUE,
+        regions_all = FALSE,
+        variables = c("SP.POP.TOTL"),
+        start_year = 2019, 
+        end_year = 2019)
+
+small_country_filter_df <- small_country_filter_df[small_country_filter_df$Value >= 1000000 & (!is.na(small_country_filter_df$Value)), c("Country", "Ctry_iso")]
+rownames(small_country_filter_df) <- 1:nrow(small_country_filter_df)
 
 # Add period and period number variables
 if(def_list$time_range_end-def_list$time_range_start >= 2){
@@ -669,8 +707,16 @@ ui <- fluidPage(
                                                 # Download all countries
                                                 materialSwitch(
                                                         inputId = "in_id_ctries_all",
-                                                        label = "Include all countries and regions",
+                                                        label = "Include all countries",
                                                         value = def_list$ctries_all,
+                                                        status = "primary",
+                                                        right = TRUE),
+                                                
+                                                # Download all regions
+                                                materialSwitch(
+                                                        inputId = "in_id_regs_all",
+                                                        label = "Include all regions",
+                                                        value = def_list$regs_all,
                                                         status = "primary",
                                                         right = TRUE)
                                                 
@@ -1529,6 +1575,15 @@ ui <- fluidPage(
                                                         multiple = TRUE
                                                 ),
                                                 
+                                                # Filter small countries
+                                                materialSwitch(
+                                                        inputId = "gr_scat_id_ctries_small",
+                                                        label = "Filter small countries (Population < 1M)",
+                                                        value = FALSE,
+                                                        status = "primary",
+                                                        right = TRUE
+                                                ),
+                                                
                                                 # Define number of plots
                                                 numericInput(
                                                         inputId = "gr_scat_plot_num",
@@ -1803,13 +1858,14 @@ server <- function(input, output, session) {
                 input$in_id_ctries_str,
                 input$in_id_ctries_asp,
                 input$in_id_ctries_reg,
-                input$in_id_ctries_all),{
+                input$in_id_ctries_all,
+                input$in_id_regs_all),{
                         ctry_aux <- c(input$in_id_ctries_ctry, 
                                 input$in_id_ctries_str,
                                 input$in_id_ctries_asp,
                                 input$in_id_ctries_reg)
 
-                if(is.null(ctry_aux) & input$in_id_ctries_all == FALSE){
+                if(is.null(ctry_aux) & input$in_id_ctries_all == FALSE & input$in_id_regs_all == FALSE){
 
                         onclick("in_id_ext",
                                 showModal(session = session,
@@ -1820,9 +1876,8 @@ server <- function(input, output, session) {
                                 ))
                         )
                 } else {
-                        if(length(ctry_aux)==0 & input$in_id_ctries_all == FALSE){
+                        if(length(ctry_aux)==0 & input$in_id_ctries_all == FALSE & input$in_id_regs_all == FALSE){
 
-                                print(length(ctry_aux)==0 & input$in_id_ctries_all == FALSE)
                                 onclick("in_id_ext",
                                         showModal(session = session,
                                                 modalDialog(
@@ -1845,6 +1900,7 @@ server <- function(input, output, session) {
                 input$in_id_ctries_asp,
                 input$in_id_ctries_reg,
                 input$in_id_ctries_all,
+                input$in_id_regs_all,
                 input$in_id_time_range
                 ), {
         
@@ -1854,7 +1910,7 @@ server <- function(input, output, session) {
                         input$in_id_ctries_reg)
                 
                 output$in_id_ext_mes_ui1 <- renderUI({
-                        if(is.null(selected_ctries) & input$in_id_ctries_all == FALSE){
+                        if(is.null(selected_ctries) & input$in_id_ctries_all == FALSE & input$in_id_regs_all == FALSE){
                                 return(tags$p("Select Countries and Time period before loading external data.", 
                                         style = "color:red"))
                         }
@@ -1873,6 +1929,7 @@ server <- function(input, output, session) {
                 ctries_asp = def_list$ctries_asp,
                 ctries_reg = def_list$ctries_reg,
                 ctries_all = def_list$ctries_all,
+                regs_all = def_list$regs_all,
                 
                 # The following 2 inputs are a function of the above. They will be calculated later.
                 ctries_select = character(0),
@@ -1947,6 +2004,7 @@ server <- function(input, output, session) {
                         input$in_id_ctries_asp,
                         input$in_id_ctries_reg,
                         input$in_id_ctries_all,
+                        input$in_id_regs_all,
                         
                         # Time inputs
                         input$in_id_time_range,
@@ -1980,6 +2038,7 @@ server <- function(input, output, session) {
                                 setequal(rv_input$ctries_asp, input$in_id_ctries_asp),
                                 setequal(rv_input$ctries_reg, input$in_id_ctries_reg),
                                 setequal(rv_input$ctries_all, input$in_id_ctries_all),
+                                setequal(rv_input$regs_all, input$in_id_regs_all),
                                 
                                 # Time inputs
                                 setequal(rv_input$time_range_start, input$in_id_time_range[1]),
@@ -2033,14 +2092,31 @@ server <- function(input, output, session) {
                 rv_input$ctries_asp <- input$in_id_ctries_asp
                 rv_input$ctries_reg <- input$in_id_ctries_reg
                 rv_input$ctries_all <- input$in_id_ctries_all
+                rv_input$regs_all <- input$in_id_regs_all
                 
-                if(input$in_id_ctries_all){rv_input$ctries_selected <- c(ctry_vec, reg_vec)} else {
+                if(input$in_id_ctries_all == TRUE & input$in_id_regs_all == TRUE){
+                        rv_input$ctries_selected <- c(ctry_vec, reg_vec)
+                } 
+                
+                if(input$in_id_ctries_all == FALSE & input$in_id_regs_all == FALSE){
                         rv_input$ctries_select <- c(input$in_id_ctries_ctry ,
                                 input$in_id_ctries_str,
                                 input$in_id_ctries_asp,
                                 input$in_id_ctries_reg)
+                } 
+                
+                if(input$in_id_ctries_all == TRUE & input$in_id_regs_all == FALSE){
+                        rv_input$ctries_select <- c(ctry_vec,
+                                input$in_id_ctries_reg)
                 }
                 
+                if(input$in_id_ctries_all == FALSE & input$in_id_regs_all == TRUE){
+                        rv_input$ctries_select <- c(input$in_id_ctries_ctry ,
+                                input$in_id_ctries_str,
+                                input$in_id_ctries_asp,
+                                reg_vec)
+                } 
+
                 rv_input$ctries_select_iso2 <- ctry_df[ctry_df[ , "country"] %in% rv_input$ctries_select, "iso2c"]
                 
                 
@@ -2105,6 +2181,7 @@ server <- function(input, output, session) {
                                 rv_input$ctries_asp <- reset_list$ctries_asp
                                 rv_input$ctries_reg <- reset_list$ctries_reg
                                 rv_input$ctries_all <- reset_list$ctries_all
+                                rv_input$regs_all <- reset_list$regs_all
                                 rv_input$ctries_select <- reset_list$ctries_select
                                 rv_input$ctries_select_iso2 <- reset_list$ctries_select_iso2
                                 
@@ -2183,11 +2260,17 @@ server <- function(input, output, session) {
                                         choices = reg_vec,
                                         selected = reset_list$ctries_reg)
                                 
-                                # All
+                                # All countries
                                 updateMaterialSwitch(
                                         session = session,
                                         inputId = "in_id_ctries_all",
                                         value = reset_list$ctries_all)
+                                
+                                # All regions
+                                updateMaterialSwitch(
+                                        session = session,
+                                        inputId = "in_id_regs_all",
+                                        value = reset_list$regs_all)
                                 
                                 # Time range
                                 updateSliderInput(
@@ -2316,6 +2399,7 @@ server <- function(input, output, session) {
                         countries_asp = rv_input$ctries_asp,
                         countries_reg = rv_input$ctries_reg,
                         countries_all = rv_input$ctries_all,
+                        regions_all = rv_input$regs_all,
                         variables = rv_input$wdi_vars_code,
                         start_year = rv_input$time_range_start, 
                         end_year = rv_input$time_range_end)
@@ -2331,6 +2415,7 @@ server <- function(input, output, session) {
                 input$in_id_ctries_asp, 
                 input$in_id_ctries_reg,
                 input$in_id_ctries_all,
+                input$in_id_regs_all,
                 input$in_id_time_range
                 ), {
                 
@@ -2340,9 +2425,23 @@ server <- function(input, output, session) {
                 # Print messages with filter parameters                
                 print("Starting external data import process")
                 print("(1/2) Selected countries/regions (ISO-2):")
-                if(input$in_id_ctries_all == TRUE){
-                        message_ctries <- c("All")
-                } else {message_ctries <- ctry_df[ctry_df[ , "country"] %in% c(input$in_id_ctries_ctry, input$in_id_ctries_str, input$in_id_ctries_asp, input$in_id_ctries_reg), "iso2c"]}
+                
+                if(input$in_id_ctries_all == TRUE & input$in_id_regs_all == TRUE){
+                        message_ctries <- c("All countries and regions")
+                } 
+                
+                if(input$in_id_ctries_all == FALSE & input$in_id_regs_all == FALSE){
+                        message_ctries <- ctry_df[ctry_df[ , "country"] %in% c(input$in_id_ctries_ctry, input$in_id_ctries_str, input$in_id_ctries_asp, input$in_id_ctries_reg), "iso2c"]
+                } 
+                
+                if(input$in_id_ctries_all == TRUE & input$in_id_regs_all == FALSE){
+                        message_ctries <- ctry_df[ctry_df[ , "country"] %in% c(ctry_vec, input$in_id_ctries_reg), "iso2c"]
+                } 
+                
+                if(input$in_id_ctries_all == FALSE & input$in_id_regs_all == TRUE){
+                        message_ctries <- ctry_df[ctry_df[ , "country"] %in% c(input$in_id_ctries_ctry, input$in_id_ctries_str, input$in_id_ctries_asp, reg_vec), "iso2c"]
+                }
+                
                 print(message_ctries)
                 print("(2/2) Year range:")
                 print(paste0(input$in_id_time_range[1], " - ", input$in_id_time_range[2]))
@@ -2414,18 +2513,29 @@ server <- function(input, output, session) {
                 
                 # To ensure we have the same number of rows per variable
                 # create a dataset with num_ctries * num_years rows * num_variable
-                # that includes only "Country", "Year" and "Variable"
+                # that includes only "Country", "Year" and "Variable" 
                 
-                if(input$in_id_ctries_all == TRUE){
-                        ctries_select_iso3 <- unique(ctry_df$iso3c)
-                } else {
+                if(input$in_id_ctries_all == TRUE & input$in_id_regs_all == TRUE){
+                        ctries_select_iso3 <- ctry_df[ctry_df[ , "country"], "iso3c"]
+                }
+                if(input$in_id_ctries_all == FALSE & input$in_id_regs_all == FALSE){
                         ctries_select <- c(input$in_id_ctries_ctry, input$in_id_ctries_str, input$in_id_ctries_asp, input$in_id_ctries_reg)
                         if(is.null(ctries_select)){
                                 print("No countries selected.")
                                 return()}
                         ctries_select_iso3 <- ctry_df[ctry_df[ , "country"] %in% ctries_select, "iso3c"]
                 }
-
+                
+                if(input$in_id_ctries_all == TRUE & input$in_id_regs_all == FALSE){
+                        ctries_select <- c(ctry_vec, input$in_id_ctries_reg)
+                        ctries_select_iso3 <- ctry_df[ctry_df[ , "country"] %in% ctries_select, "iso3c"]
+                }
+                
+                if(input$in_id_ctries_all == FALSE & input$in_id_regs_all == TRUE){
+                        ctries_select <- c(input$in_id_ctries_ctry, input$in_id_ctries_str, input$in_id_ctries_asp, reg_vec)
+                        ctries_select_iso3 <- ctry_df[ctry_df[ , "country"] %in% ctries_select, "iso3c"]
+                } 
+                
                 years <- input$in_id_time_range[1]:input$in_id_time_range[2]
                 
                 # If no defined parameters for time range or countries, then return
@@ -3980,8 +4090,6 @@ server <- function(input, output, session) {
                         t_end = input$gr_line_id_time_range[2]
                 )
                 
-                print(str(graph_input))
-                
                 return(graph_input)
                 
                 
@@ -4483,15 +4591,9 @@ server <- function(input, output, session) {
         
         # Reactive values for scatter
         rv_scat <- reactiveValues(
-                hola = 1
                 
         )
-        
-        rv_scat_envir <- rlang::current_env()
 
-        print(exists("rv_scat", envir = .GlobalEnv))
-
-        
         ### Update inputs ----
         
         observeEvent(c(input$in_id_update, input$in_id_reset_confirm) , {
@@ -4529,6 +4631,16 @@ server <- function(input, output, session) {
                 
                 aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
                 
+                #More invalidation
+                
+                for(n in 1:input$gr_scat_plot_num){
+                        print("BEFORE INPUTS!!!!!!!!!!!!!!!!!!!!!!!!")
+                        print(eval(parse(text=paste0("rv_scat$x_max", n))))
+                        print(eval(parse(text=paste0("rv_scat$x_min", n))))
+                        print(eval(parse(text=paste0("rv_scat$y_max", n))))
+                        print(eval(parse(text=paste0("rv_scat$y_min", n))))
+                }
+                
                 lapply(1:input$gr_scat_plot_num, function(i) {
                         
                         wellPanel(
@@ -4554,7 +4666,7 @@ server <- function(input, output, session) {
                                                                 inputId = paste0('gr_scat_id_vars_x_', i), 
                                                                 label = "",
                                                                 choices = aux_var,
-                                                                select = eval(parse(text=paste0('rv_scat$x_var', i))),
+                                                                select = if(is.null(eval(parse(text=paste0('rv_scat$x_var', i))))){aux_var[i]}else{eval(parse(text=paste0('rv_scat$x_var', i)))},
                                                                 options = list(
                                                                         placeholder = 'Select'
                                                                 )
@@ -4566,7 +4678,7 @@ server <- function(input, output, session) {
                                                                 inputId = paste0('gr_scat_id_vars_y_', i), 
                                                                 label = "",
                                                                 choices = aux_var,
-                                                                select = eval(parse(text =paste0('rv_scat$y_var', i))),
+                                                                select = if(is.null(eval(parse(text=paste0('rv_scat$y_var', i))))){aux_var[i]}else{eval(parse(text=paste0('rv_scat$y_var', i)))},
                                                                 options = list(
                                                                         placeholder = 'Select'
                                                                 )
@@ -4638,7 +4750,7 @@ server <- function(input, output, session) {
                                                                 inputId = paste0('gr_scat_id_stat_x_', i),
                                                                 label = "", 
                                                                 choices = stats_vec,
-                                                                select = eval(parse(text =paste0('rv_scat$x_stat', i))),
+                                                                select = if(is.null(eval(parse(text =paste0('rv_scat$x_stat', i))))){stats_vec[1]}else{eval(parse(text =paste0('rv_scat$x_stat', i)))},
                                                                 multiple = FALSE
                                                         )
                                                 ),
@@ -4647,7 +4759,7 @@ server <- function(input, output, session) {
                                                                 inputId = paste0('gr_scat_id_stat_y_', i),
                                                                 label = "", 
                                                                 choices = stats_vec,
-                                                                select = eval(parse(text =paste0('rv_scat$y_stat', i))),
+                                                                select = if(is.null(eval(parse(text =paste0('rv_scat$y_stat', i))))){stats_vec[5]}else{eval(parse(text =paste0('rv_scat$y_stat', i)))},
                                                                 multiple = FALSE
                                                         )
                                                 )
@@ -4656,11 +4768,13 @@ server <- function(input, output, session) {
                                 
                                 hr(style = "border-top: 1px solid #a6acaf;"),
                                 
+                                h5("Include lines"),
+                                
                                 # Regression line
                                 materialSwitch(
                                         inputId = paste0("gr_scat_id_regline", i),
-                                        label = "Include regression line",
-                                        value = FALSE,
+                                        label = "Regression line",
+                                        value =  eval(parse(text =paste0('rv_scat$scat_regline', i))),
                                         status = "primary",
                                         right = TRUE
                                 ),
@@ -4668,10 +4782,80 @@ server <- function(input, output, session) {
                                 # 45 degree line
                                 materialSwitch(
                                         inputId = paste0("gr_scat_id_45line", i),
-                                        label = "Include 45 degree line",
-                                        value = FALSE,
+                                        label = "45 degree line",
+                                        value = eval(parse(text =paste0('rv_scat$scat_45line', i))),
                                         status = "primary",
                                         right = TRUE
+                                ),
+
+                                # Mean quadrants
+                                materialSwitch(
+                                        inputId = paste0("gr_scat_id_quad_avg", i),
+                                        label = "Mean quadrants",
+                                        value = eval(parse(text =paste0('rv_scat$scat_quad_avg', i))),
+                                        status = "primary",
+                                        right = TRUE
+                                ),
+                                
+                                # Median quadrants
+                                materialSwitch(
+                                        inputId = paste0("gr_scat_id_quad_med", i),
+                                        label = "Median quadrants",
+                                        value = eval(parse(text =paste0('rv_scat$scat_quad_med', i))),
+                                        status = "primary",
+                                        right = TRUE
+                                ),
+                                
+                                hr(style = "border-top: 1px solid #a6acaf;"),
+                                
+                                h5("Filter dataset"),
+                                
+                                tags$b("Horizontal axis variable:"),
+                                helpText(eval(parse(text=paste0('input$gr_scat_id_vars_x_', i)))),
+                                helpText("Log transformed: ", eval(parse(text=paste0('input$gr_scat_id_transform_log_x_', i)))),
+                                helpText("Statistic: ", eval(parse(text=paste0('input$gr_scat_id_stat_x_', i)))),
+                                sliderInput(
+                                        inputId = paste0("gr_scat_id_vars_x_range", i),
+                                        label = "Select range for horizontal axis variable",
+                                        sep = "",
+                                        min = if(is.null(eval(parse(text=paste0('rv_scat$x_min', i))))){-1}else{floor(eval(parse(text=paste0('rv_scat$x_min', i))))},
+                                        max = if(is.null(eval(parse(text=paste0('rv_scat$x_max', i))))){1}else{ceiling(eval(parse(text=paste0('rv_scat$x_max', i))))},
+                                        step = 1,
+                                        value = c(
+                                                if(is.null(eval(parse(text=paste0('rv_scat$x_min', i))))){-1}else{
+                                                        if(!is.null(eval(parse(text=paste0('rv_scat$x_range', i, "[1]"))))){floor(eval(parse(text=paste0('rv_scat$x_range', i, "[1]"))))}else{}
+                                                        floor(eval(parse(text=paste0('rv_scat$x_min', i))))
+                                                },
+                                                if(is.null(eval(parse(text=paste0('rv_scat$x_max', i))))){1}else{
+                                                        if(!is.null(eval(parse(text=paste0('rv_scat$x_range', i, "[2]"))))){ceiling(eval(parse(text=paste0('rv_scat$x_range', i, "[2]"))))}else{}
+                                                        floor(eval(parse(text=paste0('rv_scat$x_max', i))))
+                                                }
+                                        ),
+                                        round = TRUE
+                                ),
+
+                                tags$b("Vertical axis variable:"),
+                                helpText(eval(parse(text=paste0('input$gr_scat_id_vars_y_', i)))),
+                                helpText("Log transformed: ", eval(parse(text=paste0('input$gr_scat_id_transform_log_y_', i)))),
+                                helpText("Statistic: ", eval(parse(text=paste0('input$gr_scat_id_stat_y_', i)))),
+                                sliderInput(
+                                        inputId = paste0("gr_scat_id_vars_y_range", i),
+                                        label = "Select range for vertical axis variable",
+                                        sep = "",
+                                        min = if(is.null(eval(parse(text=paste0('rv_scat$y_min', i))))){-1}else{floor(eval(parse(text=paste0('rv_scat$y_min', i))))},
+                                        max = if(is.null(eval(parse(text=paste0('rv_scat$y_max', i))))){1}else{ceiling(eval(parse(text=paste0('rv_scat$y_max', i))))},
+                                        step = 1,
+                                        value = c(
+                                                if(is.null(eval(parse(text=paste0('rv_scat$y_min', i))))){-1}else{
+                                                        if(!is.null(eval(parse(text=paste0('rv_scat$y_range', i, "[1]"))))){floor(eval(parse(text=paste0('rv_scat$y_range', i, "[1]"))))}else{}
+                                                        floor(eval(parse(text=paste0('rv_scat$y_min', i))))
+                                                },
+                                                if(is.null(eval(parse(text=paste0('rv_scat$y_max', i))))){1}else{
+                                                        if(!is.null(eval(parse(text=paste0('rv_scat$y_range', i, "[2]"))))){ceiling(eval(parse(text=paste0('rv_scat$y_range', i, "[2]"))))}else{}
+                                                        floor(eval(parse(text=paste0('rv_scat$y_max', i))))
+                                                }
+                                        ),
+                                        round = TRUE
                                 )
                         )
                 })
@@ -4684,8 +4868,12 @@ server <- function(input, output, session) {
                 if(length(input$gr_scat_id_ctries)==0){return()}
                 
                 # Filter by country
-                initial_data_reshaped <- rv_df$dat_all %>%
-                        filter(Country %in% input$gr_scat_id_ctries)
+                initial_data_reshaped <- rv_df$dat_all[rv_df$dat_all$Country %in% input$gr_scat_id_ctries, ]
+                
+                # Filter small countries
+                if(input$gr_scat_id_ctries_small){
+                        initial_data_reshaped <- initial_data_reshaped[initial_data_reshaped$Country %in% small_country_filter_df$Country, ]
+                }
                 
                 # Move variables to columns
                 initial_data_reshaped <- reshape2::dcast(initial_data_reshaped, Country + Ctry_iso + Ctry_group + Ctry_group_num + Year ~ Var_name, value.var="Value")
@@ -4693,6 +4881,9 @@ server <- function(input, output, session) {
                 tibble_list <- list()
 
                 for (i in 1:input$gr_scat_plot_num){
+                        
+                        rv_input$xaxis_title_zeros <- ""
+                        rv_input$yaxis_title_zeros <- ""
                         
                         print("****************************************************")
                         print(paste0("Scatter ", i, "/", input$gr_scat_plot_num))
@@ -4720,21 +4911,46 @@ server <- function(input, output, session) {
                         y_stat <- eval(parse(text = paste0("input$gr_scat_id_stat_y_", i)))
 
                         eval(parse(text = paste0("rv_scat$x_stat", i, " <- ", as.character("x_stat"))))
-                        eval(parse(text = paste0("rv_scat$y_stat", i, " <- ", as.character("y_stat"))))                        
+                        eval(parse(text = paste0("rv_scat$y_stat", i, " <- ", as.character("y_stat"))))    
                         
+                        scat_regline <- eval(parse(text = paste0("input$gr_scat_id_regline", i)))
+                        scat_45line <- eval(parse(text = paste0("input$gr_scat_id_45line", i)))
+                        scat_quad_avg <- eval(parse(text = paste0("input$gr_scat_id_quad_avg", i)))
+                        scat_quad_med <- eval(parse(text = paste0("input$gr_scat_id_quad_med", i)))
+                        
+                        eval(parse(text = paste0("rv_scat$scat_regline", i, " <- ", as.character("scat_regline"))))
+                        eval(parse(text = paste0("rv_scat$scat_45line", i, " <- ", as.character("scat_45line"))))
+                        eval(parse(text = paste0("rv_scat$scat_quad_avg", i, " <- ", as.character("scat_quad_avg"))))
+                        eval(parse(text = paste0("rv_scat$scat_quad_med", i, " <- ", as.character("scat_quad_med"))))
+                        
+                        x_range <- eval(parse(text = paste0("input$gr_scat_id_vars_x_range", i)))
+                        y_range <- eval(parse(text = paste0("input$gr_scat_id_vars_y_range", i)))
+                        eval(parse(text = paste0("rv_scat$x_range", i, " <- ", as.character("x_range"))))
+                        eval(parse(text = paste0("rv_scat$y_range", i, " <- ", as.character("y_range"))))
                         
                         print("Variables:")
                         print(x_var)
                         print(y_var)
-                        print("Time ranges")
+                        print("Time ranges:")
                         print(x_time)
                         print(y_time)
-                        print("Log transformation")
+                        print("Log transformation:")
                         print(x_log)
                         print(y_log)
-                        print("Statistic")
+                        print("Statistics:")
                         print(x_stat)
                         print(y_stat)
+                        
+                        print("Regression line:")
+                        print(scat_regline)
+                        print("45 degree line:")
+                        print(scat_45line)
+                        print("Mean quadrants:")
+                        print(scat_quad_avg)
+                        print("Median quadrants:")
+                        print(scat_quad_med)
+                        
+                        
 
                         if(is.null(x_var) | is.null(y_var)){
                                 
@@ -4759,6 +4975,8 @@ server <- function(input, output, session) {
                                         x_var_source <- unique(filter(rv_df$dat_all, Var_code %in% x_var_code) %>% select(Database))
                                         y_var_source <- unique(filter(rv_df$dat_all, Var_code %in% y_var_code) %>% select(Database))
                                         
+                                        # Rename variables in aux
+                                        
                                         if(x_var_name != y_var_name){
                                                 aux <- initial_data_reshaped %>% select(Country, Ctry_iso, Ctry_group, Ctry_group_num, Year, x_var_name, y_var_name)
                                                 colnames(aux)[which(names(aux) == x_var_name)] <- "X_VAR"
@@ -4772,8 +4990,35 @@ server <- function(input, output, session) {
 
                                         aux <- aux %>% as_tibble()
                                         
+                                        # Create logic variables indicating whether year should be included
                                         aux$Year_include_x <- aux$Year >= x_time[1] & aux$Year <= x_time[2]
                                         aux$Year_include_y <- aux$Year >= y_time[1] & aux$Year <= y_time[2]
+                                        
+                                        
+                                        # Transform data: divide by trillions/billions/millions/thousands
+                                        x_var_zeros <- ""
+                                        y_var_zeros <- ""
+                                        
+                                        for (j in 4:1){
+                                                
+                                                if(input$gr_scat_id_transform_zeros & max(abs(aux$X_VAR), na.rm = TRUE)>(10^(3*j))){
+                                                        if(input$gr_scat_id_xaxis) {
+                                                                rv_input$xaxis_title_zeros <- paste0(" ", units_zeros[5 - j])
+                                                                x_var_zeros <- units_zeros[5 - j]
+                                                        }
+                                                        aux$X_VAR <- aux$X_VAR/(10^(3*j))
+                                                }
+                                                
+                                                if(input$gr_scat_id_transform_zeros & max(abs(aux$Y_VAR), na.rm = TRUE)>(10^(3*j))){
+
+                                                        if(input$gr_scat_id_yaxis) {
+                                                                rv_input$yaxis_title_zeros <- paste0(" ", units_zeros[5 - j])
+                                                                y_var_zeros <- units_zeros[5 - j]
+                                                        }
+                                                        aux$Y_VAR <- aux$Y_VAR/(10^(3*j))
+                                                }
+                                        }
+                                        
                                         
                                         # Log transformation
                                         
@@ -4793,44 +5038,74 @@ server <- function(input, output, session) {
                                                 var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
                                                         FUN = mean, na.rm=TRUE, na.action=NULL)
                                         }
+                                        
                                         if(x_stat == "Median"){
                                                 var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
                                                         FUN = median, na.rm=TRUE, na.action=NULL)
                                         }
+                                        
                                         if(x_stat == "Maximum"){
                                                 var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
                                                         FUN = my_max_fun)
                                         }
+                                        
                                         if(x_stat == "Minimum"){                                        
                                                 var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
                                                 FUN = my_min_fun)
                                         }
+                                        
                                         if(x_stat == "Standard deviation"){
                                                 var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
-                                                        FUN = sd, na.rm=TRUE, na.action=NULL)
-                                                
+                                                        FUN = sd, na.rm=TRUE)
                                         }
-                                        # if(x_stat == "Most recent value"){x_function <- "last_observation_fun"}
+                                        
+                                        if(x_stat == "Most recent value"){
+                                                var1_aux <- aux[aux$Year_include_x == TRUE, ] 
+                                                var1_aux <- var1_aux[var1_aux$Year == max(var1_aux$Year) & (!is.na(var1_aux$X_VAR)), c("Country", "X_VAR")]
+                                                aux2 <- unique(aux[, c("Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year_include_x" )])
+                                                var1 <- merge(
+                                                        x = aux2,
+                                                        y = var1_aux,
+                                                        by = c("Country"),
+                                                        all.x = TRUE)
+                                                var1 <- rename(var1, X_var = X_VAR)
+                                        }
+                                                
         
                                         var1 <- var1[var1$Year_include_x == TRUE, ]
                                         
                                         if(y_stat == "Average"){                                
                                                 var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
                                                         FUN = mean, na.rm=TRUE, na.action=NULL)}
+                                        
                                         if(y_stat == "Median"){                                
                                                 var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
                                                         FUN = median, na.rm=TRUE, na.action=NULL)}
+                                        
                                         if(y_stat == "Maximum"){                                
                                                 var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
                                                         FUN = my_max_fun)}
+                                        
                                         if(y_stat == "Minimum"){                                
                                                 var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
                                                         FUN = my_min_fun)}
+                                        
                                         if(y_stat == "Standard deviation"){
                                                 var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
-                                                        FUN = sd, na.rm=TRUE, na.action=NULL)
+                                                        FUN = sd, na.rm=TRUE)
                                         }
-                                        # if(y_stat == "Most recent value"){y_function <- ""}
+
+                                        if(y_stat == "Most recent value"){
+                                                var2_aux <- aux[aux$Year_include_y == TRUE, ] 
+                                                var2_aux <- var2_aux[var2_aux$Year == max(var2_aux$Year) & (!is.na(var2_aux$X_VAR)), c("Country", "Y_VAR")]
+                                                aux2 <- unique(aux[, c("Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year_include_y" )])
+                                                var2 <- merge(
+                                                        x = aux2,
+                                                        y = var2_aux,
+                                                        by = c("Country"),
+                                                        all.x = TRUE)
+                                                var2 <- rename(var2, Y_var = Y_VAR)
+                                        }
         
                                         var2 <- var2[var2$Year_include_y == TRUE, ]
                                         
@@ -4851,16 +5126,51 @@ server <- function(input, output, session) {
                                         aux <- aux %>% tibble::add_column(
                                                 X_var_name = as.character(x_var_name),
                                                 X_var_units = as.character(x_var_units),
+                                                X_var_zeros = as.character(x_var_zeros),
                                                 X_var_source = as.character(x_var_source),
-                                                X_var_period = as.character(c(paste0("(", x_time[1], "-", x_time[2], ")"))),
+                                                X_var_period = as.character(c(paste0(x_time[1], "-", x_time[2]))),
                                                 X_var_stat = as.character(x_stat),
                                                 Y_var_name = as.character(y_var_name),
                                                 Y_var_units = as.character(y_var_units),
+                                                Y_var_zeros = as.character(y_var_zeros),
                                                 Y_var_source = as.character(y_var_source),
-                                                Y_var_period = as.character(c(paste0("(", y_time[1], "-", y_time[2], ")"))),
-                                                Y_var_stat = as.character(y_stat)
+                                                Y_var_period = as.character(c(paste0(y_time[1], "-", y_time[2]))),
+                                                Y_var_stat = as.character(y_stat),
+                                                scat_regline = as.logical(scat_regline),
+                                                scat_45line = as.logical(scat_45line),
+                                                scat_quad_avg = as.logical(scat_quad_avg),
+                                                scat_quad_med = as.logical(scat_quad_med),
+                                                scat_regline_text = as.character("Note: the blue line represents the linear reggresion line."),
+                                                scat_45line_text = as.character("Note: the black line represents the 45 degree line (y=x)."),
+                                                scat_quad_avg_text = as.character("Note: plot is divided into quadrants by average values."),
+                                                scat_quad_med_text = as.character("Note: plot is divided into quadrants by median values."), 
                                                         )
-                                                
+                                        
+                                        # Max and min of range for filtering input widgets
+                                        X_var_max <- my_max_fun(aux$X_var)
+                                        X_var_min <- my_min_fun(aux$X_var)
+                                        Y_var_max <- my_max_fun(aux$Y_var)
+                                        Y_var_min <- my_min_fun(aux$Y_var)
+                                        eval(parse(text = paste0("rv_scat$x_max", i, " <- ", as.character("X_var_max"))))
+                                        eval(parse(text = paste0("rv_scat$x_min", i, " <- ", as.character("X_var_min"))))
+                                        eval(parse(text = paste0("rv_scat$y_max", i, " <- ", as.character("Y_var_max"))))
+                                        eval(parse(text = paste0("rv_scat$y_min", i, " <- ", as.character("Y_var_min"))))
+                                        
+                                        
+                                        # Add column specifying if country is filtered out by X and Y variable limits
+                                        aux$not_filtered <- (aux$X_var <= max(eval(parse(text = paste0("input$gr_scat_id_vars_x_range", i)))) &
+                                                        aux$X_var >= min(eval(parse(text = paste0("input$gr_scat_id_vars_x_range", i)))) &
+                                                        aux$Y_var <= max(eval(parse(text = paste0("input$gr_scat_id_vars_y_range", i)))) &
+                                                        aux$Y_var >= min(eval(parse(text = paste0("input$gr_scat_id_vars_y_range", i))))
+                                        )
+
+
+                                        excluded_countries <- aux[aux$not_filtered == FALSE, "Country"]
+                                        print(excluded_countries)
+                                        aux <- aux[aux$not_filtered == TRUE, ]
+
+                                        
+                                        # Append to list        
                                         list_name <- paste0("table", i)
                                         
                                         aux <- aux %>% as_tibble()
@@ -4876,6 +5186,7 @@ server <- function(input, output, session) {
         
         createUI_scat <- function(table){
                 
+                # Return if empty table
                 if(nrow(table) == 0) {return()}
                 
                 # Parameters for plot
@@ -4883,45 +5194,58 @@ server <- function(input, output, session) {
                         title_text <- paste0(unique(table$X_var_name), 
                                 " ", 
                                 unique(table$X_var_period),
+                                " ",
+                                unique(tolower(table$X_var_stat)),
                                 " vs. ", 
                                 unique(table$Y_var_name), 
                                 " ", 
-                                unique(table$Y_var_period))
+                                unique(table$Y_var_period),
+                                " ",
+                                unique(tolower(table$Y_var_stat))
+                                )
                 }
                 
                 if(input$gr_scat_id_xaxis){
+                        xaxis_title <- unique(table$X_var_name)
+                        if(input$gr_scat_id_transform_zeros & (!unique(table$X_var_zeros) == "" )){
+                                xaxis_title <- paste0(xaxis_title, ", ", unique(table$X_var_zeros))
+                        }
                         if(rv_input$xaxis_title_log != ""){
-                                xaxis_title <- paste0(unique(table$X_var_name),
+                                xaxis_title <- paste0(xaxis_title,
                                         rv_input$xaxis_title_log,
-                                        " ",
-                                        unique(table$X_var_period),
                                         ", ",
+                                        unique(table$X_var_period),
+                                        " ",
                                         unique(tolower(table$X_var_stat))
                                 )
                         } else {
-                                xaxis_title <- paste0(unique(table$X_var_name),
-                                        " ",
-                                        unique(table$X_var_period),
+                                xaxis_title <- paste0(xaxis_title,
                                         ", ",
+                                        unique(table$X_var_period),
+                                        " ",
                                         unique(tolower(table$X_var_stat))
                                 )
                         }
                 } else {NULL}
                 
                 if(input$gr_scat_id_yaxis){
+                        yaxis_title <- unique(table$Y_var_name)
+                        if(input$gr_scat_id_transform_zeros & (unique(table$Y_var_zeros) != "" )){
+                                yaxis_title <- paste0(yaxis_title, ", ", unique(table$Y_var_zeros))
+                        }
                         if(rv_input$yaxis_title_log != ""){
-                                yaxis_title <- paste0(unique(table$Y_var_name),
+                                yaxis_title <- paste0(yaxis_title,
                                         rv_input$yaxis_title_log,
-                                        " ",
-                                        unique(table$Y_var_period),
                                         ", ",
+                                        unique(table$Y_var_period),
+                                        " ",
                                         unique(tolower(table$Y_var_stat))
                                 )
                         } else {
-                                yaxis_title <- paste0(unique(table$Y_var_name),
-                                        " ",
-                                        unique(table$Y_var_period),
+                                yaxis_title <- paste0(yaxis_title,
                                         ", ",
+                                        unique(table$Y_var_period),
+                                        " ",
                                         unique(tolower(table$Y_var_stat))
                                 )
                         }
@@ -4932,62 +5256,92 @@ server <- function(input, output, session) {
                         graph_source_y <- unique(table$Y_var_source)
                         
                         if(graph_source_x == "WDI"){
-                                graph_source_x <- "World Development Indicators"}
+                                graph_source_x <- "World Development Indicators. "}
                         
                         if(graph_source_y == "WDI"){
-                                graph_source_y <- "World Development Indicators"}
+                                graph_source_y <- "World Development Indicators. "}
                         
                         if(graph_source_x == graph_source_y){
                                 graph_source <- graph_source_x
                         } else {
-                                graph_source <- paste0(graph_source_x, " and ", graph_source_y)
+                                graph_source <- paste0(graph_source_x, " and ", graph_source_y, ". ")
                         }
+                        
+                        if(unique(table$scat_regline)){graph_source <- paste0(graph_source, unique(table$scat_regline_text))}
+                        if(unique(table$scat_45line)){graph_source <- paste0(graph_source, unique(table$scat_45line_text))}
+                        if(unique(table$scat_quad_avg)){graph_source <- paste0(graph_source, unique(table$scat_quad_avg_text))}
+                        if(unique(table$scat_quad_med)){graph_source <- paste0(graph_source, unique(table$scat_quad_med_text))}
                         
                 }
                 
                 # Plot
                 p <- ggplot(table, 
                         aes(x = X_var, y = Y_var)) +
+                        
                         # Points
-                        geom_point(size=4) +
+                        geom_point(size=2) +
+                        
+                        # Labels
+                        geom_text_repel(aes(label = if(input$gr_scat_id_ctry_short){Ctry_iso}else{Country}), size = 3, family = input$gr_scat_id_font) +
+
                         # Title and caption
                         labs(title = if(input$gr_scat_id_title){title_text},
-                                caption = if(input$gr_scat_id_source){paste("Source: ", graph_source, ".", sep = "")})+
+                                caption = if(input$gr_scat_id_source){paste("Source: ", graph_source, sep = "")}) 
+                
+                        # Increase margins inside graph by extending the range
+                        y_min <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
+                        y_max <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
+                        y_range <- y_max - y_min
+                        
+                        p <- p + scale_y_continuous(name = if(input$gr_scat_id_yaxis){yaxis_title}else{""},
+                                labels = comma_format(accuracy = 1/10^(input$gr_scat_id_digits_y), big.mark = ","),
+                                breaks = pretty_breaks(),
+                                limits = c(y_min, y_max + (y_range * 0.1)))
+                        
+                        x_min <- ggplot_build(p)$layout$panel_params[[1]]$x.range[1]
+                        x_max <- ggplot_build(p)$layout$panel_params[[1]]$x.range[2]
+                        x_range <- x_max - x_min
+                        
+                        p <- p + scale_x_continuous(name = if(input$gr_scat_id_xaxis){xaxis_title}else{""},
+                                labels = comma_format(accuracy = 1/10^(input$gr_scat_id_digits_x), big.mark = ","),
+                                breaks = pretty_breaks(),
+                                limits = c(x_min, x_max + (x_range * 0.1)))
+                        
                         # Aesthetics
-                        theme(
+                        p <- p + theme(
                                 panel.background = element_blank(),
                                 panel.border = element_blank(),
                                 panel.grid.major = element_blank(),
                                 panel.grid.minor = element_blank(),
                                 plot.title = element_text(size = 12, face = "bold"),
-                                plot.margin = if(input$gr_line_highlight_legend) {margin(0.25, 3, 1, 0.25, "cm")} else {margin(0.25, 0.25, 1, 0.25, "cm")},
+                                plot.margin = if(input$gr_scat_highlight_legend) {margin(0.25, 3, 1, 0.25, "cm")} else {margin(0.25, 0.25, 1, 0.25, "cm")},
                                 plot.caption = element_text(hjust = 0, size = 10),
                                 axis.ticks.x = element_blank(),
                                 axis.ticks.y = element_blank(),
                                 axis.text.x = element_text(colour = "black"),
                                 axis.text.y = element_text(colour = "black"),
-                                text = element_text(size = 12,  family = input$gr_line_id_font),
+                                text = element_text(size = 12,  family = input$gr_scat_id_font),
                                 legend.key = element_rect(fill = "white"),
                                 legend.title = element_blank())
+                        
+                        if(unique(table$scat_regline)){
+                                p <- p + geom_smooth(method=lm)
+                        }
+                        
+                        if(unique(table$scat_45line)){
+                                p <- p + geom_abline(slope=1, intercept=0)
+                        }
+                        
+                        if(unique(table$scat_quad_med)){
+                                p <- p + geom_hline(yintercept = median(table$Y_var, na.rm = TRUE))
+                                p <- p + geom_vline(xintercept = median(table$X_var, na.rm = TRUE))
+                        }
+                        
+                        if(unique(table$scat_quad_avg)){
+                                p <- p + geom_hline(yintercept = mean(table$Y_var, na.rm = TRUE))
+                                p <- p + geom_vline(xintercept = mean(table$X_var, na.rm = TRUE))
+                        }
 
-                
-                if(input$gr_scat_id_xaxis){
-                        p <- p + xlab(xaxis_title)
-                } else {
-                        p <- p + theme(axis.title.x=element_blank())
-                }
-                
-                if(input$gr_scat_id_yaxis){
-                        p <- p + ylab(yaxis_title)
-                } else {
-                        p <- p + theme(axis.title.y=element_blank())
-                }
-                
-                if(input$gr_scat_id_color_groups){
-                        p <- p + labs(colour = "Ctry_group")
-                }
-                
-                
                 
                 renderPlot(p)
                 
