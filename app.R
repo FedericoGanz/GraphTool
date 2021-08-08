@@ -48,7 +48,9 @@ var_df <- as.data.frame(WDI_data$series)
 var_df$name_indicator <- paste(var_df$name, var_df$indicator, sep = " | ")
 wdi_vars_aux <- c("GDP growth (annual %) | NY.GDP.MKTP.KD.ZG",
         "Inflation, consumer prices (annual %) | FP.CPI.TOTL.ZG",
-        "Population, total | SP.POP.TOTL")
+        "Population, total | SP.POP.TOTL",
+        "Exports of goods and services (% of GDP) | NE.EXP.GNFS.ZS",
+        "Imports of goods and services (% of GDP) | NE.IMP.GNFS.ZS")
 var_df <- var_df %>% arrange(factor(name_indicator, levels = wdi_vars_aux))
 var_vec <- var_df$name_indicator
 
@@ -134,7 +136,7 @@ nice_wdi_fun <- function(countries_ctry,
         
         # Print messages indicating selected parameters
         print("Starting WDI download process")
-        print("(1/3) Selected countries/regions (ISO-2):")
+        print("(1/3) Selected countries/aggregates (ISO-2):")
         
         if(countries_all == TRUE & regions_all == TRUE){
                 countries <- c(ctry_vec, reg_vec)
@@ -461,9 +463,7 @@ def_list <- list(
         time_name_2 = "Recent past",
         time_name_3 = "Present",
         time_name_4 = "Period 4",
-        wdi_vars = c("GDP growth (annual %) | NY.GDP.MKTP.KD.ZG",
-                "Inflation, consumer prices (annual %) | FP.CPI.TOTL.ZG",
-                "Population, total | SP.POP.TOTL"),
+        wdi_vars = wdi_vars_aux,
         # imf_vars = NULL,
         update_button_show = FALSE
 )
@@ -583,6 +583,7 @@ fix_list <- list(
         col_graphs_line = "#B02307",
         col_graphs_scat = "#B02307",
         col_palette_mult = "Oranges",
+        col_palette_stas = "PuBu",
         font = "Calibri",
         digits = 1,
         digits_y = 0,
@@ -701,7 +702,7 @@ ui <- shinyUI(
                                                         # Input: Comparators - Regions
                                                         selectizeInput(
                                                                 inputId = "in_id_ctries_reg",
-                                                                label = "Regions",
+                                                                label = "Aggregates",
                                                                 choices = reg_vec,
                                                                 multiple = TRUE,
                                                                 selected = def_list$ctries_reg),
@@ -717,7 +718,7 @@ ui <- shinyUI(
                                                         # Download all regions
                                                         materialSwitch(
                                                                 inputId = "in_id_regs_all",
-                                                                label = "Include all regions",
+                                                                label = "Include all aggregates",
                                                                 value = def_list$regs_all,
                                                                 status = "primary",
                                                                 right = TRUE)
@@ -916,7 +917,7 @@ ui <- shinyUI(
                                                         ),
                                                         
                                                         # Output: Country table
-                                                        tabPanel("Countries/regions WDI",
+                                                        tabPanel("Countries/aggregates WDI",
                                                                 
                                                                 tags$br(),
                                                                 h4("Countries"),
@@ -944,6 +945,17 @@ ui <- shinyUI(
                                         sidebarLayout(
                                                 
                                                 sidebarPanel(
+                                                        
+                                                        actionButtonStyled(
+                                                                inputId = "in_id_update_bar",
+                                                                label = "Draw/update plots",
+                                                                icon = NULL,
+                                                                width = NULL,
+                                                                btn_type = "btn-sm",
+                                                                type = "success"),
+                                                        
+                                                        tags$br(),
+                                                        tags$p(),
                                                         
                                                         wellPanel( 
                                                                 
@@ -995,7 +1007,7 @@ ui <- shinyUI(
                                                                 
                                                                 style = "background-color: #ebf5fb",
                                                                 
-                                                                # Display options ----
+                                                                # Display options
                                                                 h4("Display options"),
                                                                 
                                                                 # Include title
@@ -1120,7 +1132,7 @@ ui <- shinyUI(
                                                         uiOutput("gr_bar_out_plots") %>% withSpinner(type = 3, 
                                                                 color = fix_list$col_spinner, 
                                                                 color.background = "white"),
-                                                        helpText("Select download option (zipped .png files)"),
+                                                        helpText("Download zip file with plots and underlying data (select plot size)"),
                                                         
                                                         # Download graphs options
                                                         downloadButton("gr_bar_download_large", "Long Plots"),
@@ -1138,6 +1150,17 @@ ui <- shinyUI(
                                                 
                                                 sidebarPanel(
                                                         
+                                                        actionButtonStyled(
+                                                                inputId = "in_id_update_mult",
+                                                                label = "Draw/update plots",
+                                                                icon = NULL,
+                                                                width = NULL,
+                                                                btn_type = "btn-sm",
+                                                                type = "success"),
+                                                        
+                                                        tags$br(),
+                                                        tags$p(),
+                                                        
                                                         wellPanel( 
                                                                 
                                                                 style = "background-color: #ebf5fb",
@@ -1147,7 +1170,7 @@ ui <- shinyUI(
                                                                 # Select countries
                                                                 pickerInput(
                                                                         inputId = "gr_mult_id_ctries",
-                                                                        label = "Select countries/regions", 
+                                                                        label = "Select countries/aggregates", 
                                                                         choices = c(""),
                                                                         options = list(size = 15,
                                                                                 `actions-box` = TRUE),
@@ -1167,7 +1190,7 @@ ui <- shinyUI(
                                                                 # Select statistic
                                                                 pickerInput(
                                                                         inputId = "gr_mult_id_stat",
-                                                                        label = "Select measure", 
+                                                                        label = "Method of data aggregation by period", 
                                                                         choices = stats_vec,
                                                                         multiple = FALSE
                                                                 ),
@@ -1331,11 +1354,391 @@ ui <- shinyUI(
                                                         uiOutput("gr_mult_out_plots") %>% withSpinner(type = 3, 
                                                                 color = fix_list$col_spinner, 
                                                                 color.background = "white"),
-                                                        helpText("Select download option (zipped .png files)"),
+                                                        helpText("Download zip file with plots and underlying data (select plot size)"),
                                                         
                                                         # Download graphs options
                                                         downloadButton("gr_mult_download_large", "Long Plots"),
                                                         downloadButton("gr_mult_download_small", "Small Plots"),
+                                                        tags$br(),
+                                                        tags$br()
+                                                )
+                                        )
+                                )
+                        ),
+                        
+                        navbarMenu(title = "Stacked bar plots",
+                                
+                                tabPanel(title = "Single Country",
+                                        
+                                        sidebarLayout(
+                                                
+                                                sidebarPanel(
+                                                        
+                                                        actionButtonStyled(
+                                                                inputId = "in_id_update_stas",
+                                                                label = "Draw/update plots",
+                                                                icon = NULL,
+                                                                width = NULL,
+                                                                btn_type = "btn-sm",
+                                                                type = "success"),
+                                                        
+                                                        tags$br(),
+                                                        tags$p(),
+                                                        
+                                                        wellPanel( 
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                h4("Plot parameters"),
+                                                                
+                                                                # Select countries
+                                                                pickerInput(
+                                                                        inputId = "gr_stas_id_ctries",
+                                                                        label = "Select country",
+                                                                        choices = flags_df$country,
+                                                                        choicesOpt = list(content =  
+                                                                                        mapply(flags_df$country, flags_df$URL, FUN = function(x, y) {
+                                                                                                HTML(paste(
+                                                                                                        tags$img(src = y, width = 20, height = 15),
+                                                                                                        x
+                                                                                                ))
+                                                                                        }, SIMPLIFY = FALSE, USE.NAMES = FALSE)
+                                                                        ),
+                                                                        selected = def_list$ctries_ctry,
+                                                                        options = list(size = 15,
+                                                                                `live-search` = TRUE)
+                                                                ),
+
+                                                                # Select range
+                                                                sliderInput(
+                                                                        inputId = "gr_stas_id_time_range",
+                                                                        label = "Select range",
+                                                                        sep = "",
+                                                                        min = def_list$time_range_start,
+                                                                        max = def_list$time_range_end,
+                                                                        step = 1,
+                                                                        value = c(def_list$time_range_start, def_list$time_range_end)
+                                                                ),
+
+                                                                # Define number of plots
+                                                                numericInput(
+                                                                        inputId = "gr_stas_plot_num",
+                                                                        label = "Number of plots",
+                                                                        min = 1,
+                                                                        value = 1
+                                                                )
+                                                                
+                                                        ),
+                                                        
+                                                        # Individual plot panels
+                                                        uiOutput("stas_input_panels"),
+                                                        
+                                                        wellPanel( 
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                # Display options
+                                                                h4("Display options"),
+                                                                
+                                                                # Include title
+                                                                materialSwitch(
+                                                                        inputId = "gr_stas_id_title",
+                                                                        label = "Include title",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include Y-axis units
+                                                                materialSwitch(
+                                                                        inputId = "gr_stas_id_yaxis",
+                                                                        label = "Include Y-axis units",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include source
+                                                                materialSwitch(
+                                                                        inputId = "gr_stas_id_source",
+                                                                        label = "Include source",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include data labels
+                                                                materialSwitch(
+                                                                        inputId = "gr_stas_id_data_labels",
+                                                                        label = "Include data labels",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include subperiods
+                                                                conditionalPanel(
+                                                                        condition = "input.in_id_time_subper == true",
+                                                                        materialSwitch (
+                                                                                inputId = "gr_stas_id_time_subper",
+                                                                                label = "Include subperiods",
+                                                                                value = TRUE,
+                                                                                status = "primary",
+                                                                                right = TRUE),
+                                                                ),
+                                                                
+                                                                # Include period/subperiod averages
+                                                                materialSwitch(
+                                                                        inputId = "gr_stas_id_time_subper_avg",
+                                                                        label = "Include period/subperiod averages",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Transform data to Trillion/Billion/Million/Thousands
+                                                                materialSwitch(
+                                                                        inputId = "gr_stas_id_transform_zeros",
+                                                                        label = "Transform data to Trillion/Billion/Million/Thousands",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Transform data to logs (applies only to positive series)
+                                                                materialSwitch(
+                                                                        inputId = "gr_stas_id_transform_log",
+                                                                        label = "Transform data to logs (applies only to positive series)",
+                                                                        value = FALSE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Number of digits
+                                                                numericInput(
+                                                                        inputId = "gr_stas_id_digits",
+                                                                        label = "Number of digits in labels",
+                                                                        min = 0,
+                                                                        value = fix_list$digits
+                                                                ),
+                                                                
+                                                                # Number of digits
+                                                                numericInput(
+                                                                        inputId = "gr_stas_id_digits_y",
+                                                                        label = "Number of digits in Y-axis",
+                                                                        min = 0,
+                                                                        value = fix_list$digits_y
+                                                                ),
+                                                                
+                                                                # Select color and transparency of bars
+                                                                uiOutput('gr_stas_id_color_ui'),
+                                                                
+                                                                # Select font
+                                                                pickerInput(
+                                                                        inputId = "gr_stas_id_font",
+                                                                        label = "Select font",
+                                                                        choices = font_list,
+                                                                        selected = fix_list$font,
+                                                                        choicesOpt = list(
+                                                                                content = c("<div style='font-family: Calibri'>Calibri</div>", 
+                                                                                        "<div style='font-family: sans'>Arial</div>", 
+                                                                                        "<div style='font-family: mono'>Courier</div>", 
+                                                                                        "<div style='font-family: serif'>TimesNewRoman</div>"))
+                                                                        
+                                                                ),
+                                                                
+                                                                pickerInput(
+                                                                        inputId = "gr_stas_id_legend_pos",
+                                                                        label = "Select legends position", 
+                                                                        choices = position_list,
+                                                                        selected = "right",
+                                                                        multiple = FALSE
+                                                                )
+                                                                
+                                                        )
+                                                ),
+                                                
+                                                mainPanel(
+                                                        
+                                                        # Plots' dynamic UI
+                                                        tags$br(),
+                                                        uiOutput("gr_stas_out_plots") %>% withSpinner(type = 3, 
+                                                                color = fix_list$col_spinner, 
+                                                                color.background = "white"),
+                                                        helpText("Download zip file with plots and underlying data (select plot size)"),
+                                                        
+                                                        # Download graphs options
+                                                        downloadButton("gr_stas_download_large", "Long Plots"),
+                                                        downloadButton("gr_stas_download_small", "Small Plots"),
+                                                        tags$br(),
+                                                        tags$br()
+                                                        
+                                                )
+                                        )
+                                ),
+                                
+                                tabPanel(title = "Multiple Countries",
+                                        
+                                        sidebarLayout(
+                                                
+                                                sidebarPanel(
+                                                        
+                                                        actionButtonStyled(
+                                                                inputId = "in_id_update_stam",
+                                                                label = "Draw/update plots",
+                                                                icon = NULL,
+                                                                width = NULL,
+                                                                btn_type = "btn-sm",
+                                                                type = "success"),
+                                                        
+                                                        tags$br(),
+                                                        tags$p(),
+                                                        
+                                                        wellPanel( 
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                h4("Plot parameters"),
+                                                                
+                                                                # Select countries
+                                                                pickerInput(
+                                                                        inputId = "gr_stam_id_ctries",
+                                                                        label = "Select countries/aggregates", 
+                                                                        choices = c(""),
+                                                                        options = list(size = 15,
+                                                                                `actions-box` = TRUE),
+                                                                        multiple = TRUE
+                                                                ),
+                                                                
+                                                                # Define number of plots
+                                                                numericInput(
+                                                                        inputId = "gr_stam_plot_num",
+                                                                        label = "Number of plots",
+                                                                        min = 1,
+                                                                        value = 1
+                                                                )
+
+                                                        ),
+                                                        
+                                                        wellPanel( 
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                h4("Display options"),
+                                                                
+                                                                # Include title
+                                                                materialSwitch(
+                                                                        inputId = "gr_stam_id_title",
+                                                                        label = "Include title",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include Y-axis units
+                                                                materialSwitch(
+                                                                        inputId = "gr_stam_id_yaxis",
+                                                                        label = "Include Y-axis units",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include source
+                                                                materialSwitch(
+                                                                        inputId = "gr_stam_id_source",
+                                                                        label = "Include source",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include data labels
+                                                                materialSwitch(
+                                                                        inputId = "gr_stam_id_data_labels",
+                                                                        label = "Include data labels",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+
+                                                                # Transform data to Trillion/Billion/Million/Thousands
+                                                                materialSwitch(
+                                                                        inputId = "gr_stam_id_transform_zeros",
+                                                                        label = "Transform data to Trillion/Billion/Million/Thousands",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Transform data to logs (applies only to positive series)
+                                                                materialSwitch(
+                                                                        inputId = "gr_stam_id_transform_log",
+                                                                        label = "Transform data to logs (applies only to positive series)",
+                                                                        value = FALSE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Change country names to short
+                                                                materialSwitch(
+                                                                        inputId = "gr_stam_id_ctry_short",
+                                                                        label = "Short country names (ISO 3)",
+                                                                        value = TRUE,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Number of digits
+                                                                numericInput(
+                                                                        inputId = "gr_stam_id_digits",
+                                                                        label = "Number of digits in labels",
+                                                                        min = 0,
+                                                                        value = fix_list$digits
+                                                                ),
+                                                                
+                                                                # Number of digits Y-axis
+                                                                numericInput(
+                                                                        inputId = "gr_stam_id_digits_y",
+                                                                        label = "Number of digits in Y-axis",
+                                                                        min = 0,
+                                                                        value = fix_list$digits_y
+                                                                ),
+                                                                
+                                                                # Select font
+                                                                pickerInput(
+                                                                        inputId = "gr_stam_id_font",
+                                                                        label = "Select font",
+                                                                        choices = font_list,
+                                                                        selected = fix_list$font,
+                                                                        choicesOpt = list(
+                                                                                content = c("<div style='font-family: Calibri'>Calibri</div>", 
+                                                                                        "<div style='font-family: sans'>Arial</div>", 
+                                                                                        "<div style='font-family: mono'>Courier</div>", 
+                                                                                        "<div style='font-family: serif'>TimesNewRoman</div>"))
+                                                                ),
+                                                                
+                                                                # Select color palette
+                                                                uiOutput('gr_stam_id_color_ui'),
+                                                                
+                                                                # Individual plot panels
+                                                                uiOutput("stam_input_panels"),
+                                                                
+                                                        )
+                                                        
+                                                ),
+                                                mainPanel(
+                                                        
+                                                        # Plots' dynamic UI
+                                                        tags$br(),
+                                                        uiOutput("gr_stam_out_plots") %>% withSpinner(type = 3, 
+                                                                color = fix_list$col_spinner, 
+                                                                color.background = "white"),
+                                                        helpText("Download zip file with plots and underlying data (select plot size)"),
+                                                        
+                                                        # Download graphs options
+                                                        downloadButton("gr_stam_download_large", "Long Plots"),
+                                                        downloadButton("gr_stam_download_small", "Small Plots"),
                                                         tags$br(),
                                                         tags$br()
                                                 )
@@ -1349,16 +1752,27 @@ ui <- shinyUI(
                                         
                                         sidebarPanel(
                                                 
-                                                wellPanel( 
+                                                actionButtonStyled(
+                                                        inputId = "in_id_update_line",
+                                                        label = "Draw/update plots",
+                                                        icon = NULL,
+                                                        width = NULL,
+                                                        btn_type = "btn-sm",
+                                                        type = "success"),
+                                                
+                                                tags$br(),
+                                                tags$p(),
+                                                
+                                                wellPanel(
                                                         
                                                         style = "background-color: #ebf5fb",
                                                         
                                                         h4("Plot parameters"),
                                                         
-                                                        # Select countries/regions
+                                                        # Select countries/aggregates
                                                         pickerInput(
                                                                 inputId = "gr_line_id_ctries",
-                                                                label = "Select countries/regions", 
+                                                                label = "Select countries/aggregates", 
                                                                 choices = c(""),
                                                                 options = list(size = 15,
                                                                         `actions-box` = TRUE),
@@ -1543,7 +1957,7 @@ ui <- shinyUI(
                                                 uiOutput("gr_line_out_plots") %>% withSpinner(type = 3, 
                                                         color = fix_list$col_spinner, 
                                                         color.background = "white"),
-                                                helpText("Select download option (zipped .png files)"),
+                                                helpText("Download zip file with plots and underlying data (select plot size)"),
                                                 
                                                 # Download graphs options
                                                 downloadButton("gr_line_download_large", "Long Plots"),
@@ -1581,7 +1995,7 @@ ui <- shinyUI(
                                                         # Select countries/regions
                                                         pickerInput(
                                                                 inputId = "gr_scat_id_ctries",
-                                                                label = "Select countries/regions", 
+                                                                label = "Select countries/aggregates", 
                                                                 choices = c(""),
                                                                 options = list(size = 15,
                                                                         `actions-box` = TRUE),
@@ -1757,7 +2171,7 @@ ui <- shinyUI(
                                                 uiOutput("gr_scat_out_plots") %>% withSpinner(type = 3, 
                                                         color = fix_list$col_spinner, 
                                                         color.background = "white"),
-                                                helpText("Select download option (zipped .png files)"),
+                                                helpText("Download zip file with plots and underlying data (select plot size)"),
                                                 
                                                 # Download graphs options
                                                 downloadButton("gr_scat_download_large", "Long Plots"),
@@ -2285,7 +2699,7 @@ server <- function(input, output, session) {
                                         inputId = "in_id_ctries_all",
                                         value = reset_list$ctries_all)
                                 
-                                # All regions
+                                # All aggregates
                                 updateMaterialSwitch(
                                         session = session,
                                         inputId = "in_id_regs_all",
@@ -2443,10 +2857,10 @@ server <- function(input, output, session) {
                 
                 # Print messages with filter parameters                
                 print("Starting external data import process")
-                print("(1/2) Selected countries/regions (ISO-2):")
+                print("(1/2) Selected countries/aggregates (ISO-2):")
                 
                 if(input$in_id_ctries_all == TRUE & input$in_id_regs_all == TRUE){
-                        message_ctries <- c("All countries and regions")
+                        message_ctries <- c("All countries and aggregates")
                 } 
                 
                 if(input$in_id_ctries_all == FALSE & input$in_id_regs_all == FALSE){
@@ -3017,7 +3431,6 @@ server <- function(input, output, session) {
                 
                 return(graph_input)
                 
-
         })
         
         
@@ -3625,7 +4038,6 @@ server <- function(input, output, session) {
                 
                 return(graph_input)
                 
-                
         })
         
         createUI_mult <- function(table) {
@@ -4067,6 +4479,808 @@ server <- function(input, output, session) {
                 }
         )
         
+        ## Stacked single country plots ----
+        
+        # Reactive values for STAS
+        rv_stas <- reactiveValues()
+        
+        ### Update inputs ----
+        
+        # Inputs that are independent of the number of plots
+        observeEvent(c(input$in_id_update, input$in_id_reset_confirm), {
+                
+                print("Stas 1 (observeEvent): Generate inputs that are independent of the number of plots")
+                
+                # Country input
+                aux_ctry <- unique(rv_df$dat_all %>% select(Country, Ctry_group, Ctry_group_num))
+                aux_ctry$Ctry_slash_Group <- paste(aux_ctry$Country, aux_ctry$Ctry_group, sep = " | ")
+                aux_ctry <- aux_ctry[order(
+                        aux_ctry$Ctry_group_num,
+                        aux_ctry$Country), ]
+                ctry_choices <- as.list(aux_ctry$Country)
+                names(ctry_choices) <- aux_ctry$Ctry_slash_Group
+                ctry_select <- c(rv_input$ctries_ctry, rv_input$ctries_str, rv_input$ctries_asp, rv_input$ctries_reg)
+                
+                updatePickerInput(
+                        session = session,
+                        inputId = 'gr_stas_id_ctries',
+                        choices = ctry_choices,
+                        selected = ctry_select,
+                        options = list(size = 15,
+                                `actions-box` = TRUE)
+                )
+                
+                # Time input
+                updateSliderInput(
+                        session = session,
+                        inputId = "gr_stas_id_time_range",
+                        min = rv_input$time_range_start,
+                        max = rv_input$time_range_end,
+                        step = 1,
+                        value = c(rv_input$time_range_start, rv_input$time_range_end)
+                )
+                
+                # Color palette
+                output$gr_stas_id_color_ui <- renderUI({
+                        pickerInput(
+                                inputId = "gr_stas_id_color_pal",
+                                label = "Select color palette", 
+                                choices = palette_vec,
+                                selected = fix_list$col_palette_stas,
+                                multiple = FALSE
+                        ) %>%
+                                shinyInput_label_embed(
+                                        shiny_iconlink() %>%
+                                                bs_attach_modal(id_modal = "help_palette")
+                                )
+                })
+        })
+        
+        # Reset
+        observeEvent(input$in_id_reset_confirm, {
+                        
+                print("Stas: Reset parameters")
+                        
+                for(n in 1:input$gr_stas_plot_num){
+                        eval(parse(text = paste0("rv_stas$var", n, "<- NULL")))
+                        rv_stas$time <- NULL
+                }
+        })
+        
+        # Generate reactive values for each plot (depends on number of plots)
+        observeEvent(c(input$in_id_update,
+                        input$in_id_reset_confirm,
+                        input$gr_stas_plot_num),{
+                        
+                        print("Stas 2 (observeEvent): Generate reactive values for each plot (depends on number of plots)")
+                        
+                        if(nrow(rv_df$dat_all)==0){return()}        
+                        
+                        # Variables
+                        aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
+                        
+                        # Country
+                        rv_stas$country <- rv_input$ctries_ctry
+                        
+                        # Time range
+                        rv_stas$time <- c(rv_input$time_range_start, rv_input$time_range_end)
+                        
+                        # If reactive value is null
+                        for(n in 1:input$gr_stas_plot_num){
+                                
+                                # Variables names
+                                if(is.null(eval(parse(text = paste0("rv_stas$var", n))))){
+                                        eval(parse(text = paste0("rv_stas$var", n, " <- aux_var[c(1, 3)]")))
+                                }
+                                
+                                # Title and Y-axis legend
+                                if(n==1){title <- paste0("Trade")}else{title <- paste0("Title ", n)}
+                                if(is.null(eval(parse(text = paste0("rv_stas$title", n))))){
+                                        eval(parse(text = paste0("rv_stas$title", n, " <- title")))
+                                }
+                                
+                                if(n==1){yaxis <- paste0("Percent of GDP")}else{yaxis <- paste0("Y-axis title ", n)}
+                                if(is.null(eval(parse(text = paste0("rv_stas$yaxis", n))))){
+                                        eval(parse(text = paste0("rv_stas$yaxis", n, " <- yaxis")))
+                                }
+                                
+                                
+                        }
+                })
+        
+        
+        # Render UI for inputs of each plot (number of input widgets created depends on choice of number of plots)
+        
+        output$stas_input_panels <- renderUI({
+                
+                print("Stas 3 (renderUI): Generating input widgets that depend on number of plots")
+                
+                if(nrow(rv_df$dat_all)==0){return()}    
+                
+                aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
+                
+                lapply(1:input$gr_stas_plot_num, function(i) {
+                        
+                        # Inputs that depend on the number of plots
+                        
+                        wellPanel(
+                                style = "background-color: #ebf5fb",
+                                
+                                h4(paste("Stacked plot "), i),
+                                
+                                fluidPage(
+                                        
+                                        selectizeInput(
+                                                inputId = paste0('gr_stas_id_var_', i), 
+                                                label = "Select variables",
+                                                choices = aux_var,
+                                                multiple = TRUE,
+                                                select = eval(parse(text = paste0("rv_stas$var", i))),
+                                                options = list(placeholder = 'Select')
+                                        ),
+                                        
+                                        textInput(
+                                                inputId = paste0("gr_stas_id_title_text",i), 
+                                                label = "Plot title text", 
+                                                value = isolate(eval(parse(text = paste0("rv_stas$title", i))))
+                                        ),
+                                        
+                                        textInput(
+                                                inputId = paste0("gr_stas_id_yaxis_text", i), 
+                                                label = "Y-axis text", 
+                                                value = isolate(eval(parse(text = paste0("rv_stas$yaxis", i))))
+                                        )
+                                )        
+                        )
+                })
+        })
+        
+        # Update reactive values if there are changes in inputs
+        observe({
+                
+                print("Stas 4 (observe): update reactive values if there is any change in inputs")
+
+                if(nrow(rv_df$dat_all)==0){return()}
+                
+                # Country
+                if(!is.null(input$gr_stas_id_ctries)){
+                        rv_stas$country <- input$gr_stas_id_ctries
+                }
+                
+                # Time
+                if(!is.null(input$gr_stas_id_time_range)){
+                        rv_stas$time <- input$gr_stas_id_time_range
+                }
+                
+                for(i in 1:input$gr_stas_plot_num){
+                        
+                        # Variables
+                        if(!is.null(eval(parse(text = paste0("input$gr_stas_id_var_", i))))){
+                                eval(parse(text = paste0("rv_stas$var", i, "<- input$gr_stas_id_var_", i)))
+                        }
+                        
+                        # Title and Y-axis
+                        if(!is.null(eval(parse(text = paste0("input$gr_stas_id_title_text", i))))){
+                                eval(parse(text = paste0("rv_stas$title", i, "<- input$gr_stas_id_title_text", i)))
+                        }
+                        if(!is.null(eval(parse(text = paste0("input$gr_stas_id_yaxis_text", i))))){
+                                eval(parse(text = paste0("rv_stas$yaxis", i, "<- input$gr_stas_id_yaxis_text", i)))
+                        }
+                }
+                
+                # Filter by country
+                initial_data_reshaped <- rv_df$dat_all[rv_df$dat_all$Country %in% input$gr_stas_id_ctries, ]
+                
+                # Create Variable name | variable code column
+                initial_data_reshaped$Var_slash_code <- paste(initial_data_reshaped$Var_name, initial_data_reshaped$Var_code, sep = " | ")
+                
+                #Create empty list for tibbles
+                tibble_list <- list()
+                
+                for (i in 1:input$gr_stas_plot_num){
+                        
+                        list_name <- paste0("table", i)
+                        
+                        if(is.null(eval(parse(text = paste0("rv_stas$var", i))))){
+                                
+                                tibble_list[[list_name]] <- data.frame()
+
+                        }else{
+                                
+                                # Select variables
+                                aux <- initial_data_reshaped[initial_data_reshaped$Var_slash_code %in% eval(parse(text = paste0("rv_stas$var", i))), ]
+                                
+                                # Filter data by year
+                                aux <- aux %>% filter(Year >= rv_stas$time[1] & Year <= rv_stas$time[2])
+                                
+                                # Title
+                                aux <- aux %>% tibble::add_column(
+                                        Title = as.character(paste0(eval(parse(text = paste0("rv_stas$title", i))), " - ", rv_stas$country)),
+                                        Y_axis = as.character(eval(parse(text = paste0("rv_stas$yaxis", i))))
+                                                )
+                                
+                                # Append to list        
+                                aux <- aux %>% as_tibble()
+                                tibble_list[[list_name]] <- aux
+                                rv_stas$tibble_list <- tibble_list
+                                
+                        }
+                }
+        })
+        
+        ### Plots ---- 
+        
+        # Prep data
+        prepped_data_stas <- eventReactive(c(input$in_id_update, 
+                input$in_id_reset_confirm, 
+                input$in_id_update_stas), {
+                
+                print("Stas 5 (eventReactive): prepare tibbles for stas")
+                
+                if(nrow(rv_df$dat_all)==0){return()}
+                if(length(input$gr_stas_id_ctries)==0){return()}
+                return(rv_stas$tibble_list)
+                        
+        })
+        
+        color_reactive_stas <- reactive({
+                
+                if(!is.null(input$gr_stas_id_color_pal)){
+                        return(input$gr_stas_id_color_pal)
+                }else{
+                        return("RdPu")
+                }
+                
+        })
+        
+        createUI_stas <- function(table) {
+                
+                print("Stas 6 (renderUI): present stas plots")
+                
+                if(!all(is.na(table$Value))){
+                        
+                        # Input for title, subtitle Y-axis and source
+                        title_text <- if(isolate(input$gr_stas_id_title)){
+                                unique(table$Title)
+                        }
+                        
+                        yaxis_units <- if(isolate(input$gr_stas_id_yaxis)){
+                                unique(table$Y_axis)
+                        } else {NULL}
+                        
+                        if(isolate(input$gr_stas_id_source)){
+                                graph_source <- unique(table$Database)
+                                graph_source[graph_source=="WDI"] <- "World Development Indicators"
+                                graph_source <- paste(graph_source, collapse = ",")
+                                graph_source <- paste0(graph_source, ".")
+                        }
+                        
+                        # Year axis intervals: if less than 30 years covered, then include all years, otherwise every 2 years 
+                        intervals <- ifelse(isolate(input$gr_stas_id_time_range[2]) - isolate(input$gr_stas_id_time_range[1]) < 30, 1, 2)
+                        
+                        # Transform data: divide by trillions/billions/millions/thousands
+                        for (i in 4:1){
+                                if(isolate(input$gr_stas_id_transform_zeros) & max(abs(table$Value), na.rm = TRUE)>(10^(3*i))){
+                                        if(isolate(input$gr_stas_id_title)) {
+                                                subtitle_text <- paste(
+                                                        c(subtitle_text, units_zeros[5 - i]), 
+                                                        collapse = "")
+                                                separator <- if(length(subtitle_text) == 0){""} else {", "}
+                                                if(isolate(input$gr_stas_id_yaxis)){
+                                                        yaxis_units <- paste(
+                                                                c(yaxis_units, units_zeros[5 - i]), 
+                                                                collapse = separator)
+                                                }
+                                        }
+                                        table$Value <- table$Value/(10^(3*i))
+                                }
+                        }
+                        
+                        # Log transform
+                        if(isolate(input$gr_stas_id_transform_log) & min(table$Value, na.rm = TRUE)>0){
+                                subtitle_text <- paste(
+                                        c(subtitle_text, " (Log transformation)"), 
+                                        collapse = "")
+                                if(isolate(input$gr_stas_id_yaxis)){                                                
+                                        yaxis_units <- paste(
+                                                c(yaxis_units, " (Log transformation)"), 
+                                                collapse = "")
+                                }
+                                table$Value <- log(table$Value)
+                        }
+                        
+                        # Create subperiod variables to include rectangles
+                        if(rv_input$time_subper & isolate(input$gr_stas_id_time_subper)){
+                                
+                                # If 2 subperiods, then there are 3 cases
+                                if(rv_input$time_subper_num == 2){
+                                        
+                                        # Case 1 
+                                        if(isolate(input$gr_stas_id_time_range[1]) < rv_input$time_limit_1 & isolate(input$gr_stas_id_time_range[2]) > rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5, rv_input$time_limit_1 + 0.5), 
+                                                        Year_end = c(rv_input$time_limit_1 + 0.5, isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_1, rv_input$time_name_2)
+                                                )
+                                        }
+                                        # Case 2 
+                                        if(isolate(input$gr_stas_id_time_range[2]) <= rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5), 
+                                                        Year_end = c(isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_1)
+                                                )
+                                        }
+                                        # Case 3
+                                        if(isolate(input$gr_stas_id_time_range[1]) >= rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5), 
+                                                        Year_end = c(isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_2)
+                                                )
+                                        }
+                                }
+                                # If 3 subperiods, then there are 6 cases
+                                if(rv_input$time_subper_num == 3){
+                                        
+                                        # Case 1
+                                        if(isolate(input$gr_stas_id_time_range[1]) < rv_input$time_limit_1 & isolate(input$gr_stas_id_time_range[2]) > rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5, rv_input$time_limit_1 + 0.5, rv_input$time_limit_2 + 0.5), 
+                                                        Year_end = c(rv_input$time_limit_1 + 0.5, rv_input$time_limit_2 + 0.5,isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_1, rv_input$time_name_2, rv_input$time_name_3)
+                                                )
+                                        }
+                                        # Case 2
+                                        if(isolate(input$gr_stas_id_time_range[1]) < rv_input$time_limit_1 & isolate(input$gr_stas_id_time_range[2]) <= rv_input$time_limit_2 & isolate(input$gr_stas_id_time_range[2]) > rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5, rv_input$time_limit_1 + 0.5), 
+                                                        Year_end = c(rv_input$time_limit_1 + 0.5, isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_1, rv_input$time_name_2)
+                                                )
+                                        }
+                                        # Case 3
+                                        if(isolate(input$gr_stas_id_time_range[1]) >= rv_input$time_limit_1 & isolate(input$gr_stas_id_time_range[1]) < rv_input$time_limit_2 & isolate(input$gr_stas_id_time_range[2]) > rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5, rv_input$time_limit_2 + 0.5), 
+                                                        Year_end = c(rv_input$time_limit_2 + 0.5, isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_2, rv_input$time_name_3)
+                                                )
+                                        }
+                                        # Case 4
+                                        if(isolate(input$gr_stas_id_time_range[2]) <= rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5), 
+                                                        Year_end = c(isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_1)
+                                                )
+                                        }
+                                        # Case 5
+                                        if(isolate(input$gr_stas_id_time_range[1]) >= rv_input$time_limit_1 & isolate(input$gr_stas_id_time_range[2]) <= rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5), 
+                                                        Year_end = c(isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_2)
+                                                )
+                                        }
+                                        # Case 6
+                                        if(isolate(input$gr_stas_id_time_range[1]) >= rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5), 
+                                                        Year_end = c(isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_3)
+                                                )
+                                        }
+                                }
+                                # If 4 subperiods, then there are 10 cases
+                                if(rv_input$time_subper_num == 4){
+                                        # Case 1
+                                        if(isolate(input$gr_stas_id_time_range[1]) < rv_input$time_limit_1 & isolate(input$gr_stas_id_time_range[2]) > rv_input$time_limit_3){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5, rv_input$time_limit_1 + 0.5, rv_input$time_limit_2 + 0.5, rv_input$time_limit_3 + 0.5), 
+                                                        Year_end = c(rv_input$time_limit_1 + 0.5, rv_input$time_limit_2 + 0.5, rv_input$time_limit_3 + 0.5,isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_1, rv_input$time_name_2, rv_input$time_name_3, rv_input$time_name_4)
+                                                )
+                                        }
+                                        # Case 2
+                                        if(isolate(input$gr_stas_id_time_range[1]) < rv_input$time_limit_1 & isolate(input$gr_stas_id_time_range[2]) <= rv_input$time_limit_3 & isolate(input$gr_stas_id_time_range[2]) > rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5, rv_input$time_limit_1 + 0.5, rv_input$time_limit_2 + 0.5), 
+                                                        Year_end = c(rv_input$time_limit_1 + 0.5, rv_input$time_limit_2 + 0.5,isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_1, rv_input$time_name_2, rv_input$time_name_3)
+                                                )
+                                        }
+                                        # Case 3
+                                        if(isolate(input$gr_stas_id_time_range[1]) >= input$in_id_time_limit_1 & isolate(input$gr_stas_id_time_range[1]) < rv_input$time_limit_2 & isolate(input$gr_stas_id_time_range[2]) > rv_input$time_limit_3){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5, rv_input$time_limit_2 + 0.5, rv_input$time_limit_3 + 0.5), 
+                                                        Year_end = c(rv_input$time_limit_2 + 0.5, rv_input$time_limit_3 + 0.5, isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_2, rv_input$time_name_3, rv_input$time_name_4)
+                                                )
+                                        }
+                                        # Case 4
+                                        if(isolate(input$gr_stas_id_time_range[1]) < rv_input$time_limit_1 & isolate(input$gr_stas_id_time_range[2]) <= rv_input$time_limit_2 & isolate(input$gr_stas_id_time_range[2]) > rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5, rv_input$time_limit_1 + 0.5), 
+                                                        Year_end = c(rv_input$time_limit_1 + 0.5, isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_1, rv_input$time_name_2)
+                                                )
+                                        }
+                                        # Case 5
+                                        if(isolate(input$gr_stas_id_time_range[1]) >= rv_input$time_limit_1 & isolate(input$gr_stas_id_time_range[1]) < rv_input$time_limit_2 & isolate(input$gr_stas_id_time_range[2]) <= rv_input$time_limit_3 & isolate(input$gr_stas_id_time_range[2]) > rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5, rv_input$time_limit_2 + 0.5), 
+                                                        Year_end = c(rv_input$time_limit_2 + 0.5, isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_2, rv_input$time_name_3)
+                                                )
+                                        }
+                                        # Case 6
+                                        if(isolate(input$gr_stas_id_time_range[1]) >= rv_input$time_limit_2 & isolate(input$gr_stas_id_time_range[1]) < rv_input$time_limit_3 & isolate(input$gr_stas_id_time_range[2]) > rv_input$time_limit_3){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5, rv_input$time_limit_3 + 0.5), 
+                                                        Year_end = c(rv_input$time_limit_3 + 0.5, isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_3, rv_input$time_name_4)
+                                                )
+                                        }
+                                        # Case 7
+                                        if(isolate(input$gr_stas_id_time_range[2]) <= rv_input$time_limit_1){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5), 
+                                                        Year_end = c(isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_1)
+                                                )
+                                        }
+                                        # Case 8
+                                        if(isolate(input$gr_stas_id_time_range[1]) >= rv_input$time_limit_1 & isolate(input$gr_stas_id_time_range[2]) <= rv_input$time_limit_2){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5), 
+                                                        Year_end = c(isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_2)
+                                                )
+                                        }
+                                        # Case 9
+                                        if(isolate(input$gr_stas_id_time_range[1]) >= rv_input$time_limit_2 & isolate(input$gr_stas_id_time_range[2]) <= rv_input$time_limit_3){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5), 
+                                                        Year_end = c(isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_3)
+                                                )
+                                        }
+                                        # Case 10
+                                        if(isolate(input$gr_stas_id_time_range[1]) >= rv_input$time_limit_3){
+                                                rectangle_text <- data.frame(
+                                                        Year_start = c(isolate(input$gr_stas_id_time_range[1]) - 0.5), 
+                                                        Year_end = c(isolate(input$gr_stas_id_time_range[2]) + 0.5),
+                                                        Period = c(rv_input$time_name_4)
+                                                )
+                                        }
+                                }
+                                
+                                vertical_lines <- rectangle_text$Year_end
+                                vertical_lines <- vertical_lines[1:(length(vertical_lines) - 1)]
+                        }
+                        
+                        # Totals
+                        totals <- table %>%
+                                group_by(Year, Period) %>%
+                                summarize(total = sum(Value))
+
+                        # Actually create plot
+                        p <- ggplot(table, aes(fill = Var_name, x = Year, y = Value))+
+                                geom_bar(position="stack",
+                                        stat = "identity",
+                                        colour = "black" ) +
+                                scale_fill_brewer(palette=isolate(color_reactive_stas())) + 
+                                theme(legend.position = isolate(input$gr_stas_id_legend_pos))+
+                                # Include title, subtitle, source and Y-axis title
+                                labs(title = title_text,
+                                        subtitle = subtitle_text,
+                                        caption = if(isolate(input$gr_stas_id_source)){paste("Source: ", graph_source, sep = "")},
+                                        y = if(isolate(input$gr_stas_id_yaxis)){yaxis_units} else {NULL}
+                                ) + 
+                                # Aesthetics
+                                theme(panel.background = element_blank(),
+                                        panel.border = element_blank(),
+                                        panel.grid.major = element_blank(),
+                                        panel.grid.minor = element_blank(),
+                                        plot.title = element_text(size = 12, face = "bold"),
+                                        plot.margin = margin(0.25, 0.25, 1, 0.25, "cm"),
+                                        plot.caption = element_text(hjust = 0, size = 10),
+                                        axis.ticks.x = element_blank(),
+                                        axis.ticks.y = element_blank(),
+                                        axis.text.x = element_text(colour = "black"),
+                                        axis.text.y = element_text(colour = "black"),
+                                        text = element_text(size = 12,  family = isolate(input$gr_stas_id_font)),
+                                        legend.title = element_blank()
+                                )+
+                                # Define intervals of Year axis
+                                scale_x_continuous(name = "",
+                                        breaks = seq(isolate(input$gr_stas_id_time_range[1]),
+                                                isolate(input$gr_stas_id_time_range[2]),
+                                                by = intervals)
+                                )+
+                                coord_cartesian(xlim = c(isolate(input$gr_stas_id_time_range[1]), isolate(input$gr_stas_id_time_range[2])))
+
+
+                        # Include data labels
+                        if(isolate(input$gr_stas_id_data_labels)){p <- p +
+                                geom_text(data = table,
+                                        aes(
+                                                x = Year,
+                                                y = Value,
+                                                label = format(round(as.numeric(Value), isolate(input$gr_stas_id_digits)),
+                                                        nsmall = isolate(input$gr_stas_id_digits), big.mark = ",")),
+                                        position = position_stack(vjust=0.5),
+                                        size = 3,
+                                        family = isolate(input$gr_stas_id_font)) +
+                                # geom_text(data = totals,
+                                #         aes(x = Year,
+                                #         y = total,
+                                #         label = format(round(as.numeric(total), isolate(input$gr_stas_id_digits)),
+                                #                 nsmall = isolate(input$gr_stas_id_digits), big.mark = ",")
+                                #         ),
+                                #         vjust = ifelse(totals$total < 0 , 1.5, -0.5),
+                                #         hjust = 0.5,
+                                #         size = 3,
+                                #         family = isolate(input$gr_bar_id_font),
+                                #         inherit.aes = FALSE) +
+                                geom_point(data = totals, aes(x = Year, y = total), color = "black", size = 2, inherit.aes = FALSE)
+                        }
+
+                        # Increase range of Y axis to make room for the box indicating subperiod
+                        y_min <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
+                        y_max <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
+                        y_range <- y_max - y_min
+
+                        # Include thousands separating comma in Y-axis
+                        p <- p + scale_y_continuous(name = yaxis_units,
+                                labels = comma_format(accuracy = 1/10^(isolate(input$gr_stas_id_digits_y)), big.mark = ","),
+                                breaks = pretty_breaks(),
+                                limits = c(y_min, y_max + (y_range*0.1),
+                                        inherit.aes = FALSE)
+                        )
+
+                        # Get new axis limits that will be used as inputs to define the size of the subperiod rectangles
+                        y_min_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
+                        y_max_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
+                        y_range_new <- y_max - y_min
+
+                        #Define other parameters that will be used as inputs to define the size of the subperiod rectangles
+                        size_factor <- 0.08
+                        ALPHA <- 0.15
+
+                        # Subperiod rectangles, their labels and the dotted lines separating
+                        if(rv_input$time_subper & isolate(input$gr_stas_id_time_subper)){
+                                p <- p +
+                                        geom_rect(data = rectangle_text,
+                                                aes(NULL, NULL, xmin = -Inf, xmax = Inf),
+                                                ymin = y_max_new - y_range_new * size_factor ,
+                                                ymax = y_max_new,
+                                                colour = NA,
+                                                fill="grey",
+                                                alpha = 0.5,
+                                                inherit.aes = FALSE
+                                        )+
+                                        geom_label(data = rectangle_text,
+                                                aes(x = Year_start + (Year_end - Year_start) / 2,
+                                                        y = y_max_new * ALPHA + (y_max_new - y_range_new * size_factor) * (1 - ALPHA),
+                                                        label = Period,
+                                                        family = isolate(input$gr_stas_id_font)
+                                                ),
+                                                size = 3.3,
+                                                fill = "grey",
+                                                alpha = 0,
+                                                label.size = NA,
+                                                hjust = "center",
+                                                vjust = "bottom",
+                                                inherit.aes = FALSE)
+
+                                for (i in vertical_lines) {
+                                        p <- p + geom_segment(x = i,
+                                                y = y_max_new,
+                                                xend = i,
+                                                yend = y_max_new - y_range_new * size_factor,
+                                                colour = "white",
+                                                size = 1,
+                                                alpha = 1,
+                                                inherit.aes = FALSE) +
+                                                geom_segment(x = i,
+                                                        y = y_max_new - y_range_new * size_factor,
+                                                        xend = i,
+                                                        yend = -Inf,
+                                                        colour = "grey",
+                                                        linetype = "dotted",
+                                                        inherit.aes = FALSE)
+                                }
+                        }
+
+                        # Period average lines
+                        if(isolate(input$gr_stas_id_time_subper_avg)){
+                                if(rv_input$time_subper & isolate(input$gr_stas_id_time_subper)){
+
+                                        vec_average <- totals %>%
+                                                group_by(Period) %>%
+                                                summarise_at(vars(total),
+                                                        list(Value_avg = mean),
+                                                        na.rm = TRUE)
+                                        vec_average <- as.data.frame(vec_average)
+
+                                        rectangle_text <- merge(x = rectangle_text,
+                                                y = as.data.frame(vec_average),
+                                                by = "Period")
+
+                                        for(i in 1:nrow(rectangle_text)){
+                                                yvalue <- vec_average %>% filter(Period == rectangle_text$Period[i]) %>% select(Value_avg)
+                                                period_average <- yvalue[[1]]
+                                                p <- p + geom_segment(x = rectangle_text$Year_start[i],
+                                                        y = period_average,
+                                                        xend = rectangle_text$Year_end[i],
+                                                        yend = period_average,
+                                                        inherit.aes = FALSE)
+                                        }
+                                        p <- p + geom_label(
+                                                data = rectangle_text,
+                                                aes(x = Year_start+(Year_end-Year_start) / 2,
+                                                        y = (y_max_new - y_range_new * size_factor) - (y_max_new - (y_max_new * ALPHA + (y_max_new - y_range_new * size_factor) * (1 - ALPHA))),
+                                                        label = paste("Average (", round((Year_start + 0.5), 0), "-", round((Year_end - 0.5), 0) , "): ", format(round(as.numeric(Value_avg), isolate(input$gr_stas_id_digits)), nsmall = isolate(input$gr_stas_id_digits), big.mark = ","), sep = ""),
+                                                        family = isolate(input$gr_stas_id_font)
+                                                ),
+                                                size = 3.3,
+                                                alpha = 0,
+                                                label.size = NA,
+                                                hjust = "center",
+                                                vjust = "bottom",
+                                                inherit.aes = FALSE)
+
+                                }  else {
+                                        # Full period average
+                                        vec_average <- totals %>%
+                                                summarise_at(vars(total),
+                                                        list(Value_avg = mean),
+                                                        na.rm = TRUE)
+                                        yvalue <- vec_average %>% select(Value_avg)
+                                        yvalue <- yvalue[[1]]
+                                        p <- p + geom_segment(
+                                                x = isolate(input$gr_stas_id_time_range[1]),
+                                                y = yvalue,
+                                                xend = isolate(input$gr_stas_id_time_range[2]),
+                                                yend = yvalue,
+                                                inherit.aes = FALSE) +
+
+                                                geom_label(
+                                                        aes(x = isolate(input$gr_stas_id_time_range[1]) + (isolate(input$gr_stas_id_time_range[2]) - isolate(input$gr_stas_id_time_range[1])) / 2,
+                                                                y = (y_max_new - y_range_new * size_factor) - (y_max_new - (y_max_new * ALPHA + (y_max_new - y_range_new * size_factor)*(1 - ALPHA))),
+                                                                label = paste("Average (", isolate(input$gr_stas_id_time_range[1]), "-", isolate(input$gr_stas_id_time_range[2]), "): ", format(round(as.numeric(yvalue), isolate(input$gr_stas_id_digits)), nsmall = isolate(input$gr_stas_id_digits), big.mark = ","), sep = ""),
+                                                                family = isolate(input$gr_stas_id_font)
+                                                        ),
+                                                        size = 3.3,
+                                                        alpha = 0,
+                                                        label.size = NA,
+                                                        hjust = "center",
+                                                        vjust = "bottom",
+                                                        inherit.aes = FALSE)
+                                }
+                        }
+
+                        # Correct digits if numbers are repeated in Y-axis
+                        x <- ggplot_build(p)$layout$panel_params[[1]]$y.sec$breaks
+                        x <- x[!is.na(x)]
+                        yaxis_number_labels <- length(x)
+                        yaxis_number_labels_obs <- length(unique(round(x, isolate(input$gr_stas_id_digits_y))))
+                        digits <- isolate(input$gr_stas_id_digits_y)
+
+                        while(yaxis_number_labels > yaxis_number_labels_obs){
+                                digits <- digits + 1
+                                p <- p + scale_y_continuous(name = yaxis_units,
+                                        labels = comma_format(accuracy = 1/10^(digits), big.mark = ","),
+                                        breaks = pretty_breaks())
+
+                                x <- ggplot_build(p)$layout$panel_params[[1]]$y.sec$breaks
+                                x <- x[!is.na(x)]
+                                yaxis_number_labels <- length(x)
+                                yaxis_number_labels_obs <- length(unique(round(x, digits)))
+                        }
+                        
+                        # Append plot to the list of plots
+                        rv_plots$stas <- isolate(list.append(rv_plots$stas, p))
+                        rv_plots$stas_data <- isolate(list.append(rv_plots$stas_data, table))
+
+                        # Show plot
+                        renderPlot(p)
+                        
+                }
+        }
+        
+        output$gr_stas_out_plots <- renderUI({
+                
+                rv_plots$stas <- list()
+                rv_plots$stas_data <- list()
+                
+                pd <- req(prepped_data_stas())
+                
+                tagList(map(pd, ~createUI_stas(.)))
+                
+        })
+        
+        
+        ### Plots download handlers ----
+        
+        # Download plots as png zipped - large
+        output$gr_stas_download_large <- downloadHandler(
+                filename = 'gr_stas_out_plots_large.zip',
+                content = function(file){
+                        
+                        # Set temporary working directory
+                        owd <- setwd(tempdir())
+                        on.exit(setwd(owd))
+                        
+                        # Save the plots
+                        vector_plots <- vector()
+                        
+                        for (i in 1:length(rv_plots$stas)){
+                                name <- paste("stacked_single_large", i, ".png", sep = "")
+                                ggsave(name, 
+                                        plot = rv_plots$stas[[i]], 
+                                        device = "png",
+                                        width = 11.5, 
+                                        height = 5.75,
+                                        units = "in")
+                                vector_plots <- c(vector_plots, paste("stacked_single_large", i, ".png", sep = ""))
+                                
+                                name_data <- paste("stacked_single_large_data", i, ".csv", sep = "")
+                                write.csv(rv_plots$stas_data[[i]], name_data, row.names = FALSE)
+                                vector_plots <- c(vector_plots, paste("stacked_single_large_data", i, ".csv", sep = ""))
+                                
+                        }
+                        
+                        # Zip them up
+                        zip(file, vector_plots)
+                }
+        )
+        
+        # Download plots as png zipped - small
+        output$gr_stas_download_small <- downloadHandler(
+                filename = 'gr_stas_out_plots_small.zip',
+                content = function(file){
+                        
+                        # Set temporary working directory
+                        owd <- setwd(tempdir())
+                        on.exit(setwd(owd))
+                        
+                        # Save the plots
+                        vector_plots <- vector()
+                        for (i in 1:length(rv_plots$stas)){
+                                name <- paste("stacked_single_small", i, ".png", sep = "")
+                                
+                                # Increase intervals in X axis in small plots
+                                intervals <- ifelse(max(input$gr_stas_id_time_range) - min(input$gr_stas_id_time_range) < 30, 2, 4)
+                                rv_plots$stas[[i]] <- rv_plots$stas[[i]] +
+                                        scale_x_continuous(name = "",
+                                                breaks = seq(min(input$gr_stas_id_time_range),
+                                                        max(input$gr_stas_id_time_range),
+                                                        by = intervals))+
+                                        theme(legend.position = "top")
+                                
+                                ggsave(name, 
+                                        plot = rv_plots$stas[[i]], 
+                                        device = "png",
+                                        width = 5.75, 
+                                        height = 5.75,
+                                        units = "in")
+                                vector_plots <- c(vector_plots, paste("stacked_single_small", i, ".png", sep = ""))
+                                
+                                name_data <- paste("stacked_single_small_data", i, ".csv", sep = "")
+                                write.csv(rv_plots$stas_data[[i]], name_data, row.names = FALSE)
+                                vector_plots <- c(vector_plots, paste("stacked_single_small_data", i, ".csv", sep = ""))
+                                
+                        }
+                        
+                        # Zip them up
+                        zip(file, vector_plots)
+                }
+        )
+        
+        
         ## Line plots ----                
         
         ### Update inputs ----
@@ -4135,7 +5349,6 @@ server <- function(input, output, session) {
                 )
                 
                 return(graph_input)
-                
                 
         })
         
@@ -4643,10 +5856,6 @@ server <- function(input, output, session) {
         )
         
         
-        
-        
-        
-        
         ## Scatter plots ----
         
         # Reactive values for scatter
@@ -4669,7 +5878,7 @@ server <- function(input, output, session) {
                 rv_scat$ctry_choices <- as.list(aux_ctry$Country)
                 names(rv_scat$ctry_choices) <- aux_ctry$Ctry_slash_Group
                 
-                selected_ctries <- setdiff(rv_scat$ctry_choices, c("South Sudan", 
+                rv_scat$selected_ctries <- setdiff(rv_scat$ctry_choices, c("South Sudan", 
                         "Libya",
                         "Equatorial Guinea",
                         "Iraq")
@@ -4679,7 +5888,7 @@ server <- function(input, output, session) {
                         session = session,
                         inputId = 'gr_scat_id_ctries',
                         choices = rv_scat$ctry_choices,
-                        selected = selected_ctries,
+                        selected = rv_scat$selected_ctries,
                         options = list(size = 15,
                                 `actions-box` = TRUE)
                 )
@@ -4696,6 +5905,7 @@ server <- function(input, output, session) {
         observeEvent(input$in_id_reset_confirm,
                 {
                         print("Scatter: Reset parameters")
+                        
                         for(n in 1:input$gr_scat_plot_num){
                                 eval(parse(text = paste0("rv_scat$x_var", n, "<- NULL")))
                                 eval(parse(text = paste0("rv_scat$y_var", n, "<- NULL")))
@@ -4757,11 +5967,26 @@ server <- function(input, output, session) {
                         if(is.null(eval(parse(text = paste0("rv_scat$x_time", n))))){
                                 eval(parse(text = paste0("rv_scat$x_time", n, "[1] <- rv_input$time_range_start")))
                                 eval(parse(text = paste0("rv_scat$x_time", n, "[2] <- rv_input$time_range_end")))
+                        }else{
+                                if(eval(parse(text = paste0("rv_scat$x_time", n, "[1]"))) < rv_input$time_range_start){
+                                        eval(parse(text = paste0("rv_scat$x_time", n, "[1] <- rv_input$time_range_start")))
+                                }
+                                if(eval(parse(text = paste0("rv_scat$x_time", n, "[2]"))) > rv_input$time_range_end){
+                                        eval(parse(text = paste0("rv_scat$x_time", n, "[2] <- rv_input$time_range_end")))
+                                }
                         }
+
                         
                         if(is.null(eval(parse(text = paste0("rv_scat$y_time", n))))){
                                 eval(parse(text = paste0("rv_scat$y_time", n, "[1] <- rv_input$time_range_start")))
                                 eval(parse(text = paste0("rv_scat$y_time", n, "[2] <- rv_input$time_range_end")))
+                        }else{
+                                if(eval(parse(text = paste0("rv_scat$y_time", n, "[1]"))) < rv_input$time_range_start){
+                                        eval(parse(text = paste0("rv_scat$y_time", n, "[1] <- rv_input$time_range_start")))
+                                }
+                                if(eval(parse(text = paste0("rv_scat$y_time", n, "[2]"))) > rv_input$time_range_end){
+                                        eval(parse(text = paste0("rv_scat$y_time", n, "[2] <- rv_input$time_range_end")))
+                                }
                         }
                         
                         # Log transform
@@ -4780,7 +6005,7 @@ server <- function(input, output, session) {
                                 eval(parse(text = paste0("rv_scat$y_stat", n, " <- stats_vec[5]")))
                         }
                         
-                        # Regression line (default: T)
+                        # Regression line (default: F)
                         if(is.null(eval(parse(text = paste0("rv_scat$scat_regline", n))))){
                                 eval(parse(text = paste0("rv_scat$scat_regline", n, " <- FALSE")))
                         }
@@ -4969,7 +6194,7 @@ server <- function(input, output, session) {
                                                 )
                                         ),
                                         
-                                        tags$b("Select statistic"),
+                                        tags$b("Method of data aggregation by period"),
                                         
                                         fluidRow(
                                                 column(6,
@@ -5090,13 +6315,13 @@ server <- function(input, output, session) {
                 
                 print("Scatter 4 (observe): update reactive values if there is any change in inputs")
                 
-                if(nrow(rv_df$dat_all)==0){return()}    
+                if(nrow(rv_df$dat_all)==0){return()}
+                
+                # Countries
+                if(!is.null(input$gr_scat_id_ctries)){
+                        rv_scat$selected_ctries <- input$gr_scat_id_ctries}
                 
                 for(i in 1:input$gr_scat_plot_num){
-                        
-                        # Countries
-                        if(!is.null(input$gr_scat_id_ctries)){
-                                rv_scat$ctry_choices <- input$gr_scat_id_ctries}
                         
                         # Variables
                         if(!is.null(eval(parse(text = paste0("input$gr_scat_id_vars_x_", i))))){
@@ -5108,10 +6333,21 @@ server <- function(input, output, session) {
 
                         # Time
                         if(!is.null(eval(parse(text = paste0("input$gr_scat_id_time_range_x_", i))))){
-                                eval(parse(text = paste0('rv_scat$x_time', i, "<- input$gr_scat_id_time_range_x_", i)))
-                        }
+                                if(eval(parse(text = paste0("input$gr_scat_id_time_range_x_", i, "[1]"))) < rv_input$time_range_start | eval(parse(text = paste0("input$gr_scat_id_time_range_x_", i, "[2]"))) > rv_input$time_range_end){
+                                        eval(parse(text = paste0('rv_scat$x_time', i, "[1] <- ", rv_input$time_range_start)))
+                                        eval(parse(text = paste0('rv_scat$x_time', i, "[2] <- ", rv_input$time_range_end)))
+                                } else {
+                                        eval(parse(text = paste0('rv_scat$x_time', i, "<- input$gr_scat_id_time_range_x_", i)))
+                                }
+                        }                                
+
                         if(!is.null(eval(parse(text = paste0("input$gr_scat_id_time_range_y_", i))))){
-                                eval(parse(text = paste0('rv_scat$y_time', i, "<- input$gr_scat_id_time_range_y_", i)))
+                                if(eval(parse(text = paste0("input$gr_scat_id_time_range_y_", i, "[1]"))) < rv_input$time_range_start | eval(parse(text = paste0("input$gr_scat_id_time_range_y_", i, "[2]"))) > rv_input$time_range_end){
+                                        eval(parse(text = paste0('rv_scat$y_time', i, "[1] <- ", rv_input$time_range_start)))
+                                        eval(parse(text = paste0('rv_scat$y_time', i, "[2] <- ", rv_input$time_range_end)))
+                                } else {
+                                        eval(parse(text = paste0('rv_scat$y_time', i, "<- input$gr_scat_id_time_range_y_", i)))
+                                }
                         }
 
                         # Log
@@ -5167,6 +6403,29 @@ server <- function(input, output, session) {
                 }
         })
         
+        observeEvent(input$in_id_update,{
+                
+                if(nrow(rv_df$dat_all)==0){return()}
+                
+                for(i in 1:input$gr_scat_plot_num){
+                        
+                        # Time
+                        if(eval(parse(text = paste0("rv_scat$x_time", i, "[1]"))) < rv_input$time_range_start){
+                                eval(parse(text = paste0("rv_scat$x_time", i, "[1] <- rv_input$time_range_start")))
+                        }
+                        if(eval(parse(text = paste0("rv_scat$x_time", i, "[2]"))) > rv_input$time_range_end){
+                                eval(parse(text = paste0("rv_scat$x_time", i, "[2] <- rv_input$time_range_end")))
+                        }
+                        if(eval(parse(text = paste0("rv_scat$y_time", i, "[1]"))) < rv_input$time_range_start){
+                                eval(parse(text = paste0("rv_scat$y_time", i, "[1] <- rv_input$time_range_start")))
+                        }
+                        if(eval(parse(text = paste0("rv_scat$y_time", i, "[2]"))) > rv_input$time_range_end){
+                                eval(parse(text = paste0("rv_scat$y_time", i, "[2] <- rv_input$time_range_end")))
+                        }
+                        
+                }
+        })
+        
         # Create tibble lists and update variable ranges
         observe({
                 
@@ -5174,369 +6433,369 @@ server <- function(input, output, session) {
                 
                 if(nrow(rv_df$dat_all)==0){return()}
                 
-                        # Filter by country
-                        initial_data_reshaped <- rv_df$dat_all[rv_df$dat_all$Country %in% rv_scat$ctry_choices, ]
+                # Filter by country
+                initial_data_reshaped <- rv_df$dat_all[rv_df$dat_all$Country %in% rv_scat$selected_ctries, ]
 
-                        # Filter small countries
-                        if(input$gr_scat_id_ctries_small){
-                                initial_data_reshaped <- initial_data_reshaped[initial_data_reshaped$Country %in% c(small_country_filter_df$Country, rv_input$ctries_reg), ]
-                        }
+                # Filter small countries
+                if(input$gr_scat_id_ctries_small){
+                        initial_data_reshaped <- initial_data_reshaped[initial_data_reshaped$Country %in% c(small_country_filter_df$Country, rv_input$ctries_reg), ]
+                }
+                
+                # Move variables to columns
+                initial_data_reshaped <- reshape2::dcast(initial_data_reshaped, Country + Ctry_iso + Ctry_group + Ctry_group_num + Year ~ Var_name, value.var="Value")
+                
+                #Create empty list for tibbles
+                tibble_list <- list()
+                
+                for (i in 1:input$gr_scat_plot_num){
                         
-                        # Move variables to columns
-                        initial_data_reshaped <- reshape2::dcast(initial_data_reshaped, Country + Ctry_iso + Ctry_group + Ctry_group_num + Year ~ Var_name, value.var="Value")
+                        rv_scat$xaxis_title_zeros <- ""
+                        rv_scat$yaxis_title_zeros <- ""
                         
-                        #Create empty list for tibbles
-                        tibble_list <- list()
+                        # print("**********************************************************************************")
+                        # print(paste0("Creating variables' range for scatter ", i, "/", input$gr_scat_plot_num))
+                        # print("**********************************************************************************")
                         
-                        for (i in 1:input$gr_scat_plot_num){
-                                
-                                rv_scat$xaxis_title_zeros <- ""
-                                rv_scat$yaxis_title_zeros <- ""
-                                
-                                print("**********************************************************************************")
-                                print(paste0("Creating variables' range for scatter ", i, "/", input$gr_scat_plot_num))
-                                print("**********************************************************************************")
-                                
-                                x_var <- eval(parse(text = paste0("rv_scat$x_var", i)))
-                                y_var <- eval(parse(text = paste0("rv_scat$y_var", i)))
-                                
-                                x_time <- eval(parse(text = paste0("rv_scat$x_time", i)))
-                                y_time <- eval(parse(text = paste0("rv_scat$y_time", i)))
-                                
-                                x_log <- eval(parse(text = paste0("rv_scat$x_log", i)))
-                                y_log <- eval(parse(text = paste0("rv_scat$y_log", i)))
-                                
-                                x_stat <- eval(parse(text = paste0("rv_scat$x_stat", i)))
-                                y_stat <- eval(parse(text = paste0("rv_scat$y_stat", i)))
-                                
-                                scat_regline <- eval(parse(text = paste0("rv_scat$scat_regline", i)))
-                                scat_regline_ci <- eval(parse(text = paste0("rv_scat$scat_regline_ci", i)))
-                                scat_45line <- eval(parse(text = paste0("rv_scat$scat_45line", i)))
-                                scat_quad_avg <- eval(parse(text = paste0("rv_scat$scat_quad_avg", i)))
-                                scat_quad_med <- eval(parse(text = paste0("rv_scat$scat_quad_med", i)))
-                                
-                                x_range <- eval(parse(text = paste0("rv_scat$x_range", i)))
-                                y_range <- eval(parse(text = paste0("rv_scat$y_range", i)))
-                                
-                                print("Variables:")
-                                print(x_var)
-                                print(y_var)
-                                print("Time ranges:")
-                                print(x_time)
-                                print(y_time)
-                                print("Log transformation:")
-                                print(x_log)
-                                print(y_log)
-                                print("Statistics:")
-                                print(x_stat)
-                                print(y_stat)
-                                print("Regression line:")
-                                print(scat_regline)
-                                print("Regression line with confidence intervals:")
-                                print(scat_regline_ci)
-                                print("45 degree line:")
-                                print(scat_45line)
-                                print("Mean quadrants:")
-                                print(scat_quad_avg)
-                                print("Median quadrants:")
-                                print(scat_quad_med)
-                                print("Variables' range:")
-                                print(x_range)
-                                print(y_range)
-                                
-                                if(is.null(x_var) | is.null(y_var)){
+                        x_var <- eval(parse(text = paste0("rv_scat$x_var", i)))
+                        y_var <- eval(parse(text = paste0("rv_scat$y_var", i)))
+                        
+                        x_time <- eval(parse(text = paste0("rv_scat$x_time", i)))
+                        y_time <- eval(parse(text = paste0("rv_scat$y_time", i)))
+                        
+                        x_log <- eval(parse(text = paste0("rv_scat$x_log", i)))
+                        y_log <- eval(parse(text = paste0("rv_scat$y_log", i)))
+                        
+                        x_stat <- eval(parse(text = paste0("rv_scat$x_stat", i)))
+                        y_stat <- eval(parse(text = paste0("rv_scat$y_stat", i)))
+                        
+                        scat_regline <- eval(parse(text = paste0("rv_scat$scat_regline", i)))
+                        scat_regline_ci <- eval(parse(text = paste0("rv_scat$scat_regline_ci", i)))
+                        scat_45line <- eval(parse(text = paste0("rv_scat$scat_45line", i)))
+                        scat_quad_avg <- eval(parse(text = paste0("rv_scat$scat_quad_avg", i)))
+                        scat_quad_med <- eval(parse(text = paste0("rv_scat$scat_quad_med", i)))
+                        
+                        x_range <- eval(parse(text = paste0("rv_scat$x_range", i)))
+                        y_range <- eval(parse(text = paste0("rv_scat$y_range", i)))
+                        
+                        # print("Variables:")
+                        # print(x_var)
+                        # print(y_var)
+                        # print("Time ranges:")
+                        # print(x_time)
+                        # print(y_time)
+                        # print("Log transformation:")
+                        # print(x_log)
+                        # print(y_log)
+                        # print("Statistics:")
+                        # print(x_stat)
+                        # print(y_stat)
+                        # print("Regression line:")
+                        # print(scat_regline)
+                        # print("Regression line with confidence intervals:")
+                        # print(scat_regline_ci)
+                        # print("45 degree line:")
+                        # print(scat_45line)
+                        # print("Mean quadrants:")
+                        # print(scat_quad_avg)
+                        # print("Median quadrants:")
+                        # print(scat_quad_med)
+                        # print("Variables' range:")
+                        # print(x_range)
+                        # print(y_range)
+                        
+                        if(is.null(x_var) | is.null(y_var)){
+                                list_name <- paste0("table", i)
+                                tibble_list[[list_name]] <- data.frame()
+                        }else{
+                                if(x_var == "" | y_var == ""){
                                         list_name <- paste0("table", i)
                                         tibble_list[[list_name]] <- data.frame()
                                 }else{
-                                        if(x_var == "" | y_var == ""){
-                                                list_name <- paste0("table", i)
-                                                tibble_list[[list_name]] <- data.frame()
-                                        }else{
-                                                print(paste0("Both X and Y variables were selected for plot ", i,"... starting to build tibble"))
-                                                
-                                                x_var_code <- strsplit(x_var, " \\| ")[[1]][2]
-                                                y_var_code <- strsplit(y_var, " \\| ")[[1]][2]
-                                                x_var_name <- strsplit(x_var, " \\| ")[[1]][1]
-                                                y_var_name <- strsplit(y_var, " \\| ")[[1]][1]
-                                                x_var_units <- unique(filter(rv_df$dat_all, Var_code %in% x_var_code) %>% select(Units))
-                                                y_var_units <- unique(filter(rv_df$dat_all, Var_code %in% y_var_code) %>% select(Units))
-                                                x_var_source <- unique(filter(rv_df$dat_all, Var_code %in% x_var_code) %>% select(Database))
-                                                y_var_source <- unique(filter(rv_df$dat_all, Var_code %in% y_var_code) %>% select(Database))
-                                                
-                                                # Rename variables in aux
-                                                
-                                                if(x_var_name != y_var_name){
-                                                        aux <- initial_data_reshaped %>% select(Country, Ctry_iso, Ctry_group, Ctry_group_num, Year, x_var_name, y_var_name)
-                                                        colnames(aux)[which(names(aux) == x_var_name)] <- "X_VAR"
-                                                        colnames(aux)[which(names(aux) == y_var_name)] <- "Y_VAR"
-                                                } else {
-                                                        aux <- initial_data_reshaped %>% select(Country, Ctry_iso, Ctry_group, Ctry_group_num, Year, x_var_name)
-                                                        colnames(aux)[which(names(aux) == x_var_name)] <- "X_VAR"
-                                                        aux$Y_VAR <- aux$X_VAR
-                                                }
-                                                
-                                                aux <- aux %>% as_tibble()
-                                                
-                                                # Create logic variables indicating whether year should be included
-                                                aux$Year_include_x <- aux$Year >= x_time[1] & aux$Year <= x_time[2]
-                                                aux$Year_include_y <- aux$Year >= y_time[1] & aux$Year <= y_time[2]
-                                                
-                                                # Transform data: divide by trillions/billions/millions/thousands
-                                                for (j in 4:1){
-                                                        
-                                                        if(input$gr_scat_id_transform_zeros & max(abs(aux$X_VAR), na.rm = TRUE)>(10^(3*j))){
-                                                                if(input$gr_scat_id_xaxis) {
-                                                                        rv_scat$xaxis_title_zeros <- paste0(" ", units_zeros[5 - j])
-                                                                        x_var_name <- paste0(x_var_name, ",", units_zeros[5 - j])
-                                                                }
-                                                                aux$X_VAR <- aux$X_VAR/(10^(3*j))
-                                                        }
-                                                        
-                                                        if(input$gr_scat_id_transform_zeros & max(abs(aux$Y_VAR), na.rm = TRUE)>(10^(3*j))){
-                                                                
-                                                                if(input$gr_scat_id_yaxis) {
-                                                                        rv_scat$yaxis_title_zeros <- paste0(" ", units_zeros[5 - j])
-                                                                        y_var_name <- paste0(y_var_name, ",", units_zeros[5 - j])
-                                                                }
-                                                                aux$Y_VAR <- aux$Y_VAR/(10^(3*j))
-                                                        }
-                                                }
-                                                
-                                                
-                                                # Log transformation
-                                                
-                                                if(x_log & my_min_fun(aux$X_VAR)>0){
-                                                        aux$X_VAR <- log(aux$X_VAR)
-                                                        x_var_name <- paste0(x_var_name, " (Log)")
-                                                } else {xaxis_title_log <- ""}
-                                                
-                                                if(y_log & my_min_fun(aux$Y_VAR)>0){
-                                                        aux$Y_VAR <- log(aux$Y_VAR)
-                                                        y_var_name <- paste0(y_var_name, " (Log)")
-                                                } else {yaxis_title_log <- ""}
-                                                
-                                                # Calculate statistic by country
-                                                if(x_stat == "Average"){
-                                                        var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
-                                                                FUN = mean, na.rm=TRUE, na.action=NULL)
-                                                }
-                                                
-                                                if(x_stat == "Median"){
-                                                        var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
-                                                                FUN = median, na.rm=TRUE, na.action=NULL)
-                                                }
-                                                
-                                                if(x_stat == "Maximum"){
-                                                        var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
-                                                                FUN = my_max_fun)
-                                                }
-                                                
-                                                if(x_stat == "Minimum"){                                        
-                                                        var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
-                                                                FUN = my_min_fun)
-                                                }
-                                                
-                                                if(x_stat == "Standard deviation"){
-                                                        var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
-                                                                FUN = sd, na.rm=TRUE)
-                                                }
-                                                
-                                                if(x_stat == "Most recent value"){
-                                                        var1_aux <- aux[aux$Year_include_x == TRUE, ] 
-                                                        var1_aux <- var1_aux[var1_aux$Year == max(var1_aux$Year) & (!is.na(var1_aux$X_VAR)), c("Country", "X_VAR")]
-                                                        aux2 <- unique(aux[, c("Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year_include_x" )])
-                                                        var1 <- merge(
-                                                                x = aux2,
-                                                                y = var1_aux,
-                                                                by = c("Country"),
-                                                                all.x = TRUE)
-                                                        var1 <- rename(var1, X_var = X_VAR)
-                                                }
-                                                
-                                                
-                                                var1 <- var1[var1$Year_include_x == TRUE, ]
-                                                
-                                                if(y_stat == "Average"){                                
-                                                        var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
-                                                                FUN = mean, na.rm=TRUE, na.action=NULL)}
-                                                
-                                                if(y_stat == "Median"){                                
-                                                        var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
-                                                                FUN = median, na.rm=TRUE, na.action=NULL)}
-                                                
-                                                if(y_stat == "Maximum"){                                
-                                                        var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
-                                                                FUN = my_max_fun)}
-                                                
-                                                if(y_stat == "Minimum"){                                
-                                                        var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
-                                                                FUN = my_min_fun)}
-                                                
-                                                if(y_stat == "Standard deviation"){
-                                                        var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
-                                                                FUN = sd, na.rm=TRUE)
-                                                }
-                                                
-                                                if(y_stat == "Most recent value"){
-                                                        var2_aux <- aux[aux$Year_include_y == TRUE, ] 
-                                                        var2_aux <- var2_aux[var2_aux$Year == max(var2_aux$Year) & (!is.na(var2_aux$X_VAR)), c("Country", "Y_VAR")]
-                                                        aux2 <- unique(aux[, c("Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year_include_y" )])
-                                                        var2 <- merge(
-                                                                x = aux2,
-                                                                y = var2_aux,
-                                                                by = c("Country"),
-                                                                all.x = TRUE)
-                                                        var2 <- rename(var2, Y_var = Y_VAR)
-                                                }
-                                                
-                                                var2 <- var2[var2$Year_include_y == TRUE, ]
-                                                
-                                                aux <- merge(
-                                                        x = var1,
-                                                        y = var2,
-                                                        by = c("Country", "Ctry_iso", "Ctry_group", "Ctry_group_num"),
-                                                        all.x = TRUE)
-                                                
-                                                aux <- aux %>% select(Country, Ctry_iso, Ctry_group, Ctry_group_num, X_var, Y_var)
-                                                
-                                                aux <- aux[order(
-                                                        aux$Ctry_group_num,
-                                                        aux$Country), ]
-                                                
-                                                rownames(aux) <- NULL
-                                                
-                                                aux <- aux %>% tibble::add_column(
-                                                        X_var_name = as.character(x_var_name),
-                                                        X_var_units = as.character(x_var_units),
-                                                        X_var_source = as.character(x_var_source),
-                                                        X_var_period = as.character(c(paste0(x_time[1], "-", x_time[2]))),
-                                                        X_var_stat = as.character(x_stat),
-                                                        
-                                                        Y_var_name = as.character(y_var_name),
-                                                        Y_var_units = as.character(y_var_units),
-                                                        Y_var_source = as.character(y_var_source),
-                                                        Y_var_period = as.character(c(paste0(y_time[1], "-", y_time[2]))),
-                                                        Y_var_stat = as.character(y_stat),
-                                                        
-                                                        scat_regline = as.logical(scat_regline),
-                                                        scat_regline_ci = as.logical(scat_regline_ci),
-                                                        scat_45line = as.logical(scat_45line),
-                                                        scat_quad_avg = as.logical(scat_quad_avg),
-                                                        scat_quad_med = as.logical(scat_quad_med),
-                                                        scat_regline_text = as.character("\n Note: the blue line represents the linear regression line."),
-                                                        scat_45line_text = as.character("\n Note: the black line represents the 45 degree line (y=x)."),
-                                                        scat_quad_avg_text = as.character("\n Note: plot is divided into quadrants by average values."),
-                                                        scat_quad_med_text = as.character("\n Note: plot is divided into quadrants by median values."), 
-                                                )
-                                                
-                                                # Max and min of range for filtering input widgets
-                                                X_var_min <- floor(my_min_fun(aux$X_var))
-                                                X_var_max <- ceiling(my_max_fun(aux$X_var))
-                                                Y_var_min <- floor(my_min_fun(aux$Y_var))
-                                                Y_var_max <- ceiling(my_max_fun(aux$Y_var))
-                                                
-                                                eval(parse(text = paste0("rv_scat$x_range", i, "[1] <- ", as.character("X_var_min"))))
-                                                eval(parse(text = paste0("rv_scat$x_range", i, "[2] <- ", as.character("X_var_max"))))
-                                                eval(parse(text = paste0("rv_scat$y_range", i, "[1] <- ", as.character("Y_var_min"))))
-                                                eval(parse(text = paste0("rv_scat$y_range", i, "[2] <- ", as.character("Y_var_max"))))
-                                                
-                                                if(eval(parse(text = paste0("rv_scat$x_range", i, "[1]"))) > eval(parse(text = paste0("rv_scat$x_range_select", i, "[1]")))){
-                                                        eval(parse(text = paste0("rv_scat$x_range_select", i, "[1] <- rv_scat$x_range", i, "[1]")))
-                                                }
-                                                if(eval(parse(text = paste0("rv_scat$x_range", i, "[2]"))) < eval(parse(text = paste0("rv_scat$x_range_select", i, "[2]")))){
-                                                        eval(parse(text = paste0("rv_scat$x_range_select", i, "[2] <- rv_scat$x_range", i, "[2]")))
-                                                }
-                                                if(eval(parse(text = paste0("rv_scat$y_range", i, "[1]"))) > eval(parse(text = paste0("rv_scat$y_range_select", i, "[1]")))){
-                                                        eval(parse(text = paste0("rv_scat$y_range_select", i, "[1] <- rv_scat$y_range", i, "[1]")))
-                                                }
-                                                if(eval(parse(text = paste0("rv_scat$y_range", i, "[2]"))) < eval(parse(text = paste0("rv_scat$y_range_select", i, "[2]")))){
-                                                        eval(parse(text = paste0("rv_scat$y_range_select", i, "[2] <- rv_scat$y_range", i, "[2]")))
-                                                }
-
-                                                # Add column specifying if country is filtered out by X and Y variable limits
-                                                aux$not_filtered <- (aux$X_var <= max(eval(parse(text = paste0("rv_scat$x_range_select", i)))) &
-                                                                aux$X_var >= min(eval(parse(text = paste0("rv_scat$x_range_select", i)))) &
-                                                                aux$Y_var <= max(eval(parse(text = paste0("rv_scat$y_range_select", i)))) &
-                                                                aux$Y_var >= min(eval(parse(text = paste0("rv_scat$y_range_select", i))))
-                                                )
-                                                
-                                                aux <- aux[aux$not_filtered == TRUE, ]
-                                                
-                                                excluded_countries <- setdiff(rv_df$dat_all$Country, aux$Country)
-                                                excluded_countries_text <- ""
-                                                
-                                                if(length(excluded_countries)>0){
-                                                        character_count <- 0
-                                                        excluded_countries_text <- "Excluded countries: "
-                                                        character_count <- nchar(excluded_countries_text)
-                                                        for (j in 1:length(excluded_countries)){
-                                                                if(character_count<90){
-                                                                        if(j==1){
-                                                                                excluded_countries_text <- paste0(excluded_countries_text, excluded_countries[j])
-                                                                                character_count <- character_count + nchar(excluded_countries[j]) + 2  
-                                                                        }else{
-                                                                                excluded_countries_text <- paste0(excluded_countries_text, "; ", excluded_countries[j])
-                                                                                character_count <- character_count + nchar(excluded_countries[j]) + 2
-                                                                        }
-
-                                                                }else{
-                                                                        excluded_countries_text <- paste0(excluded_countries_text, "; \n", excluded_countries[j])
-                                                                        character_count <- 0
-                                                                }
-                                                                if(j == length(excluded_countries)){
-                                                                        excluded_countries_text <- paste0(excluded_countries_text,".")
-                                                                }
-                                                                
-                                                        }
-                                                }else{excluded_countries_text <- ""}
-                                                
-                                                if(length(excluded_countries)>0){
-                                                        character_count <- 0
-                                                        excluded_countries_text_short <- "Excluded countries: "
-                                                        character_count <- nchar(excluded_countries_text_short)
-                                                        for (j in 1:length(excluded_countries)){
-                                                                if(character_count<40){
-                                                                        if(j==1){
-                                                                                excluded_countries_text_short <- paste0(excluded_countries_text_short, excluded_countries[j])
-                                                                                character_count <- character_count + nchar(excluded_countries[j]) + 2  
-                                                                        }else{
-                                                                                excluded_countries_text_short <- paste0(excluded_countries_text_short, "; ", excluded_countries[j])
-                                                                                character_count <- character_count + nchar(excluded_countries[j]) + 2
-                                                                        }
-                                                                        
-                                                                }else{
-                                                                        excluded_countries_text_short <- paste0(excluded_countries_text_short, "; \n", excluded_countries[j])
-                                                                        character_count <- 0
-                                                                }
-                                                                if(j == length(excluded_countries)){
-                                                                        excluded_countries_text_short <- paste0(excluded_countries_text_short,".")
-                                                                }
-                                                                
-                                                        }
-                                                }else{excluded_countries_text_short <- ""}
-                                                print(excluded_countries_text)
-                                                print(excluded_countries_text_short)
-                                                
-                                                
-                                                eval(parse(text = paste0("rv_scat$excluded_countries", i, "<- ", as.character("excluded_countries_text"))))
-                                                eval(parse(text = paste0("rv_scat$excluded_countries_short", i, "<- ", as.character("excluded_countries_text_short"))))
-                                                aux$excluded_countries <- excluded_countries_text
-                                                aux$excluded_countries_short <- excluded_countries_text_short
-                                                
-                                                # Append to list        
-                                                list_name <- paste0("table", i)
-                                                
-                                                aux <- aux %>% as_tibble()
-                                                tibble_list[[list_name]] <- aux
-                                                rv_scat$tibble_list <- tibble_list
-                                                
+                                        print(paste0("Both X and Y variables were selected for plot ", i,"... starting to build tibble"))
+                                        
+                                        x_var_code <- strsplit(x_var, " \\| ")[[1]][2]
+                                        y_var_code <- strsplit(y_var, " \\| ")[[1]][2]
+                                        x_var_name <- strsplit(x_var, " \\| ")[[1]][1]
+                                        y_var_name <- strsplit(y_var, " \\| ")[[1]][1]
+                                        x_var_units <- unique(filter(rv_df$dat_all, Var_code %in% x_var_code) %>% select(Units))
+                                        y_var_units <- unique(filter(rv_df$dat_all, Var_code %in% y_var_code) %>% select(Units))
+                                        x_var_source <- unique(filter(rv_df$dat_all, Var_code %in% x_var_code) %>% select(Database))
+                                        y_var_source <- unique(filter(rv_df$dat_all, Var_code %in% y_var_code) %>% select(Database))
+                                        
+                                        # Rename variables in aux
+                                        
+                                        if(x_var_name != y_var_name){
+                                                aux <- initial_data_reshaped %>% select(Country, Ctry_iso, Ctry_group, Ctry_group_num, Year, x_var_name, y_var_name)
+                                                colnames(aux)[which(names(aux) == x_var_name)] <- "X_VAR"
+                                                colnames(aux)[which(names(aux) == y_var_name)] <- "Y_VAR"
+                                        } else {
+                                                aux <- initial_data_reshaped %>% select(Country, Ctry_iso, Ctry_group, Ctry_group_num, Year, x_var_name)
+                                                colnames(aux)[which(names(aux) == x_var_name)] <- "X_VAR"
+                                                aux$Y_VAR <- aux$X_VAR
                                         }
+                                        
+                                        aux <- aux %>% as_tibble()
+                                        
+                                        # Create logic variables indicating whether year should be included
+                                        aux$Year_include_x <- aux$Year >= x_time[1] & aux$Year <= x_time[2]
+                                        aux$Year_include_y <- aux$Year >= y_time[1] & aux$Year <= y_time[2]
+                                        
+                                        # Transform data: divide by trillions/billions/millions/thousands
+                                        for (j in 4:1){
+                                                
+                                                if(input$gr_scat_id_transform_zeros & max(abs(aux$X_VAR), na.rm = TRUE)>(10^(3*j))){
+                                                        if(input$gr_scat_id_xaxis) {
+                                                                rv_scat$xaxis_title_zeros <- paste0(" ", units_zeros[5 - j])
+                                                                x_var_name <- paste0(x_var_name, ",", units_zeros[5 - j])
+                                                        }
+                                                        aux$X_VAR <- aux$X_VAR/(10^(3*j))
+                                                }
+                                                
+                                                if(input$gr_scat_id_transform_zeros & max(abs(aux$Y_VAR), na.rm = TRUE)>(10^(3*j))){
+                                                        
+                                                        if(input$gr_scat_id_yaxis) {
+                                                                rv_scat$yaxis_title_zeros <- paste0(" ", units_zeros[5 - j])
+                                                                y_var_name <- paste0(y_var_name, ",", units_zeros[5 - j])
+                                                        }
+                                                        aux$Y_VAR <- aux$Y_VAR/(10^(3*j))
+                                                }
+                                        }
+                                        
+                                        # Log transformation
+                                        
+                                        if(x_log & my_min_fun(aux$X_VAR)>0){
+                                                aux$X_VAR <- log(aux$X_VAR)
+                                                x_var_name <- paste0(x_var_name, " (Log)")
+                                        } else {xaxis_title_log <- ""}
+                                        
+                                        if(y_log & my_min_fun(aux$Y_VAR)>0){
+                                                aux$Y_VAR <- log(aux$Y_VAR)
+                                                y_var_name <- paste0(y_var_name, " (Log)")
+                                        } else {yaxis_title_log <- ""}
+                                        
+                                        # Calculate statistic by country: X variable
+                                        
+                                        if(x_stat == "Average"){
+                                                var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
+                                                        FUN = mean, na.rm=TRUE, na.action=NULL)
+                                        }
+                                        
+                                        if(x_stat == "Median"){
+                                                var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
+                                                        FUN = median, na.rm=TRUE, na.action=NULL)
+                                        }
+                                        
+                                        if(x_stat == "Maximum"){
+                                                var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
+                                                        FUN = my_max_fun)
+                                        }
+                                        
+                                        if(x_stat == "Minimum"){                                        
+                                                var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
+                                                        FUN = my_min_fun)
+                                        }
+                                        
+                                        if(x_stat == "Standard deviation"){
+                                                var1 <- aggregate(x = list(X_var = aux$X_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_x = aux$Year_include_x), 
+                                                        FUN = sd, na.rm=TRUE)
+                                        }
+                                        
+                                        if(x_stat == "Most recent value"){
+                                                var1_aux <- aux[aux$Year_include_x == TRUE, ] 
+                                                var1_aux <- var1_aux[var1_aux$Year == max(var1_aux$Year) & (!is.na(var1_aux$X_VAR)), c("Country", "X_VAR")]
+                                                aux2 <- unique(aux[, c("Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year_include_x" )])
+                                                var1 <- merge(
+                                                        x = aux2,
+                                                        y = var1_aux,
+                                                        by = c("Country"),
+                                                        all.x = TRUE)
+                                                var1 <- rename(var1, X_var = X_VAR)
+                                        }
+                                        
+                                        var1 <- var1[var1$Year_include_x == TRUE, ]
+                                        
+                                        # Calculate statistic by country: Y variable
+                                        
+                                        if(y_stat == "Average"){                                
+                                                var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
+                                                        FUN = mean, na.rm=TRUE, na.action=NULL)}
+                                        
+                                        if(y_stat == "Median"){                                
+                                                var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
+                                                        FUN = median, na.rm=TRUE, na.action=NULL)}
+                                        
+                                        if(y_stat == "Maximum"){                                
+                                                var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
+                                                        FUN = my_max_fun)}
+                                        
+                                        if(y_stat == "Minimum"){                                
+                                                var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
+                                                        FUN = my_min_fun)}
+                                        
+                                        if(y_stat == "Standard deviation"){
+                                                var2 <- aggregate(x = list(Y_var = aux$Y_VAR), by = list(Country = aux$Country, Ctry_iso = aux$Ctry_iso, Ctry_group = aux$Ctry_group, Ctry_group_num = aux$Ctry_group_num, Year_include_y = aux$Year_include_y), 
+                                                        FUN = sd, na.rm=TRUE)
+                                        }
+                                        
+                                        if(y_stat == "Most recent value"){
+                                                var2_aux <- aux[aux$Year_include_y == TRUE, ] 
+                                                var2_aux <- var2_aux[var2_aux$Year == max(var2_aux$Year) & (!is.na(var2_aux$X_VAR)), c("Country", "Y_VAR")]
+                                                aux2 <- unique(aux[, c("Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year_include_y" )])
+                                                var2 <- merge(
+                                                        x = aux2,
+                                                        y = var2_aux,
+                                                        by = c("Country"),
+                                                        all.x = TRUE)
+                                                var2 <- rename(var2, Y_var = Y_VAR)
+                                        }
+                                        
+                                        var2 <- var2[var2$Year_include_y == TRUE, ]
+                                        
+                                        
+                                        # Merge variables
+                                        aux <- merge(
+                                                x = var1,
+                                                y = var2,
+                                                by = c("Country", "Ctry_iso", "Ctry_group", "Ctry_group_num"),
+                                                all.x = TRUE)
+                                        
+                                        aux <- aux %>% select(Country, Ctry_iso, Ctry_group, Ctry_group_num, X_var, Y_var)
+                                        
+                                        aux <- aux[order(
+                                                aux$Ctry_group_num,
+                                                aux$Country), ]
+                                        
+                                        rownames(aux) <- NULL
+                                        
+                                        # Columns with plot parameters 
+                                        
+                                        aux <- aux %>% tibble::add_column(
+                                                X_var_name = as.character(x_var_name),
+                                                X_var_units = as.character(x_var_units),
+                                                X_var_source = as.character(x_var_source),
+                                                X_var_period = as.character(c(paste0(x_time[1], "-", x_time[2]))),
+                                                X_var_stat = as.character(x_stat),
+                                                
+                                                Y_var_name = as.character(y_var_name),
+                                                Y_var_units = as.character(y_var_units),
+                                                Y_var_source = as.character(y_var_source),
+                                                Y_var_period = as.character(c(paste0(y_time[1], "-", y_time[2]))),
+                                                Y_var_stat = as.character(y_stat),
+                                                
+                                                scat_regline = as.logical(scat_regline),
+                                                scat_regline_ci = as.logical(scat_regline_ci),
+                                                scat_45line = as.logical(scat_45line),
+                                                scat_quad_avg = as.logical(scat_quad_avg),
+                                                scat_quad_med = as.logical(scat_quad_med),
+                                                scat_regline_text = as.character("\n Note: the blue line represents the linear regression line."),
+                                                scat_45line_text = as.character("\n Note: the black line represents the 45 degree line (y=x)."),
+                                                scat_quad_avg_text = as.character("\n Note: plot is divided into quadrants by average values."),
+                                                scat_quad_med_text = as.character("\n Note: plot is divided into quadrants by median values."), 
+                                        )
+                                        
+                                        # Max and min of range for filtering input widgets
+                                        X_var_min <- floor(my_min_fun(aux$X_var))
+                                        X_var_max <- ceiling(my_max_fun(aux$X_var))
+                                        Y_var_min <- floor(my_min_fun(aux$Y_var))
+                                        Y_var_max <- ceiling(my_max_fun(aux$Y_var))
+                                        
+                                        eval(parse(text = paste0("rv_scat$x_range", i, "[1] <- ", as.character("X_var_min"))))
+                                        eval(parse(text = paste0("rv_scat$x_range", i, "[2] <- ", as.character("X_var_max"))))
+                                        eval(parse(text = paste0("rv_scat$y_range", i, "[1] <- ", as.character("Y_var_min"))))
+                                        eval(parse(text = paste0("rv_scat$y_range", i, "[2] <- ", as.character("Y_var_max"))))
+                                        
+                                        if(eval(parse(text = paste0("rv_scat$x_range", i, "[1]"))) > eval(parse(text = paste0("rv_scat$x_range_select", i, "[1]")))){
+                                                eval(parse(text = paste0("rv_scat$x_range_select", i, "[1] <- rv_scat$x_range", i, "[1]")))
+                                        }
+                                        if(eval(parse(text = paste0("rv_scat$x_range", i, "[2]"))) < eval(parse(text = paste0("rv_scat$x_range_select", i, "[2]")))){
+                                                eval(parse(text = paste0("rv_scat$x_range_select", i, "[2] <- rv_scat$x_range", i, "[2]")))
+                                        }
+                                        if(eval(parse(text = paste0("rv_scat$y_range", i, "[1]"))) > eval(parse(text = paste0("rv_scat$y_range_select", i, "[1]")))){
+                                                eval(parse(text = paste0("rv_scat$y_range_select", i, "[1] <- rv_scat$y_range", i, "[1]")))
+                                        }
+                                        if(eval(parse(text = paste0("rv_scat$y_range", i, "[2]"))) < eval(parse(text = paste0("rv_scat$y_range_select", i, "[2]")))){
+                                                eval(parse(text = paste0("rv_scat$y_range_select", i, "[2] <- rv_scat$y_range", i, "[2]")))
+                                        }
+
+                                        # Add column specifying if country is filtered out by X and Y variable limits
+                                        aux$not_filtered <- (aux$X_var <= max(eval(parse(text = paste0("rv_scat$x_range_select", i)))) &
+                                                        aux$X_var >= min(eval(parse(text = paste0("rv_scat$x_range_select", i)))) &
+                                                        aux$Y_var <= max(eval(parse(text = paste0("rv_scat$y_range_select", i)))) &
+                                                        aux$Y_var >= min(eval(parse(text = paste0("rv_scat$y_range_select", i))))
+                                        )
+                                        
+                                        aux <- aux[aux$not_filtered == TRUE, ]
+                                        
+                                        excluded_countries <- setdiff(rv_df$dat_all$Country, aux$Country)
+                                        excluded_countries_text <- ""
+                                        
+                                        if(length(excluded_countries)>0){
+                                                character_count <- 0
+                                                excluded_countries_text <- "Excluded countries: "
+                                                character_count <- nchar(excluded_countries_text)
+                                                for (j in 1:length(excluded_countries)){
+                                                        if(character_count<90){
+                                                                if(j==1){
+                                                                        excluded_countries_text <- paste0(excluded_countries_text, excluded_countries[j])
+                                                                        character_count <- character_count + nchar(excluded_countries[j]) + 2  
+                                                                }else{
+                                                                        excluded_countries_text <- paste0(excluded_countries_text, "; ", excluded_countries[j])
+                                                                        character_count <- character_count + nchar(excluded_countries[j]) + 2
+                                                                }
+
+                                                        }else{
+                                                                excluded_countries_text <- paste0(excluded_countries_text, "; \n", excluded_countries[j])
+                                                                character_count <- 0
+                                                        }
+                                                        if(j == length(excluded_countries)){
+                                                                excluded_countries_text <- paste0(excluded_countries_text,".")
+                                                        }
+                                                        
+                                                }
+                                        }else{excluded_countries_text <- ""}
+                                        
+                                        if(length(excluded_countries)>0){
+                                                character_count <- 0
+                                                excluded_countries_text_short <- "Excluded countries: "
+                                                character_count <- nchar(excluded_countries_text_short)
+                                                for (j in 1:length(excluded_countries)){
+                                                        if(character_count<40){
+                                                                if(j==1){
+                                                                        excluded_countries_text_short <- paste0(excluded_countries_text_short, excluded_countries[j])
+                                                                        character_count <- character_count + nchar(excluded_countries[j]) + 2  
+                                                                }else{
+                                                                        excluded_countries_text_short <- paste0(excluded_countries_text_short, "; ", excluded_countries[j])
+                                                                        character_count <- character_count + nchar(excluded_countries[j]) + 2
+                                                                }
+                                                                
+                                                        }else{
+                                                                excluded_countries_text_short <- paste0(excluded_countries_text_short, "; \n", excluded_countries[j])
+                                                                character_count <- 0
+                                                        }
+                                                        if(j == length(excluded_countries)){
+                                                                excluded_countries_text_short <- paste0(excluded_countries_text_short,".")
+                                                        }
+                                                        
+                                                }
+                                        }else{excluded_countries_text_short <- ""}
+
+                                        
+                                        eval(parse(text = paste0("rv_scat$excluded_countries", i, "<- ", as.character("excluded_countries_text"))))
+                                        eval(parse(text = paste0("rv_scat$excluded_countries_short", i, "<- ", as.character("excluded_countries_text_short"))))
+                                        aux$excluded_countries <- excluded_countries_text
+                                        aux$excluded_countries_short <- excluded_countries_text_short
+                                        
+                                        # Append to list        
+                                        list_name <- paste0("table", i)
+                                        
+                                        aux <- aux %>% as_tibble()
+                                        tibble_list[[list_name]] <- aux
+                                        rv_scat$tibble_list <- tibble_list
+                                        
                                 }
                         }
-                # }
+                }
         })
-        
-        
         
         ### Plots ---- 
 
@@ -5705,10 +6964,6 @@ server <- function(input, output, session) {
                 
                 # Plot
                 p <- p +
-                        # geom_point(size = 2) +
-                        
-                        # Labels
-                        # geom_text_repel(max.overlaps = 100, aes(label = if(isolate(input$gr_scat_id_ctry_short)){Ctry_iso}else{Country}), size = 3, family = isolate(input$gr_scat_id_font)) +
                         
                         # Title and caption
                         labs(title = if(isolate(input$gr_scat_id_title)){title_text},
@@ -5751,11 +7006,11 @@ server <- function(input, output, session) {
                                 legend.title = element_blank())
                         
                         if(unique(table$scat_regline_ci)){
-                                p <- p + geom_smooth(method = lm, color = "blue", size = 0.75)
+                                p <- p + geom_smooth(method = lm, color = "#0721B3", size = 0.75)
                         }
                         
                         if(unique(table$scat_regline_ci) == FALSE & unique(table$scat_regline) == TRUE){
-                                p <- p + geom_smooth(method = lm, se = FALSE, color = "blue", size = 0.75)
+                                p <- p + geom_smooth(method = lm, se = FALSE, color = "#0721B3", size = 0.75)
                         }
                         
                         if(unique(table$scat_45line)){
@@ -5786,8 +7041,6 @@ server <- function(input, output, session) {
                 
         }
         
-        
-        
         output$gr_scat_out_plots <- renderUI({
                 
                 rv_plots$scat <- list()
@@ -5798,8 +7051,6 @@ server <- function(input, output, session) {
                 tagList(map(pd, ~createUI_scat(.)))
                 
         })
-        
-        
         
         ### Plots download handlers----
         
