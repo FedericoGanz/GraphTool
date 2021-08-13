@@ -944,10 +944,8 @@ reset_list <- list(
         update_button_show = FALSE
 )
 
-
-
 # Add period and period number variables function
-add_periods <- function(dataframe,
+add_periods_fun <- function(dataframe,
         time_range_start = def_list_data$time_range_start,
         time_range_end = def_list_data$time_range_end,
         time_subper_num = def_list_data$time_subper_num,
@@ -996,7 +994,39 @@ add_periods <- function(dataframe,
         return(dataframe)
 }
 
-initial_wdi_df <- add_periods(dataframe = initial_wdi_df)
+initial_wdi_df <- add_periods_fun(dataframe = initial_wdi_df)
+
+# Transform text from one line to multiple lines
+multiline_text_fun <- function(
+        text_vector,
+        number_characters){
+        
+        for (i in 1:length(text_vector)){
+                if(nchar(text_vector[i])>number_characters){
+                        character_count <- 0
+                        new_legend <- ""
+                        legend_aux <- unlist(strsplit(text_vector[i], " "))
+                        for (j in 1:length(legend_aux)){
+                                if(j==1){
+                                        new_legend <- paste0(new_legend, legend_aux[j])
+                                        character_count <- character_count + nchar(legend_aux[j])
+                                }else{
+                                        if(character_count + nchar(legend_aux[j]) < number_characters){
+                                                new_legend <- paste0(new_legend, " ", legend_aux[j])
+                                                character_count <- character_count + nchar(legend_aux[j]) + 1
+                                        }else{
+                                                new_legend <- paste0(new_legend, "\n", legend_aux[j])
+                                                character_count <- 0
+                                        }
+                                }
+                        }
+                        text_vector[i] <- new_legend
+                }
+        }
+        
+        return(text_vector)
+}
+
 
 # Help text for country groups
 load_help_text_group <- bs_modal(
@@ -3664,7 +3694,7 @@ server <- function(input, output, session) {
                 
                 # Add period and period number variables
                 if(rv_input$time_subper){
-                        rv_df$dat_all <- add_periods(
+                        rv_df$dat_all <- add_periods_fun(
                                 dataframe = rv_df$dat_all,
                                 time_range_start = rv_input$time_range_start,
                                 time_range_end = rv_input$time_range_end,
@@ -4109,7 +4139,7 @@ server <- function(input, output, session) {
         # Prep data
         prepped_data_bar <- eventReactive(c(input$in_id_update, input$in_id_reset_confirm, input$gr_bar_id_update),{
                 
-                print("Plots - Bar [3]: Preparing data")
+                print("Plots - Bar [3]: preparing data")
                         
                 if(nrow(rv_df$dat_all)==0){return()}        
 
@@ -4607,8 +4637,9 @@ server <- function(input, output, session) {
                 
                 # Country (if previously selected country is in new dataset, keep selection, else select first country from vector)
                 aux_ctry <- unique(rv_df$dat_all$Country)
-                if(!rv_mult$ctries %in% aux_ctry){
-                        rv_mult$ctries <- aux_ctry[1]
+
+                if(setequal(rv_mult$ctries, aux_ctry)){
+                        rv_mult$ctries <- aux_ctry
                 }
                 
                 # Variables (select all variables from new dataset)
@@ -4655,7 +4686,7 @@ server <- function(input, output, session) {
         # Prep data
         prepped_data_mult <- eventReactive(c(input$in_id_update, input$in_id_reset_confirm, input$gr_mult_id_update),{
                 
-                print("Plots - Mult [3]: Preparing data")
+                print("Plots - Mult [3]: preparing data")
                 
                 if(nrow(rv_df$dat_all)==0){return()} 
 
@@ -5356,7 +5387,7 @@ server <- function(input, output, session) {
         # Prep data
         prepped_data_stas <- eventReactive(c(input$in_id_update, input$in_id_reset_confirm, input$gr_stas_id_update),{
 
-                print("Plots - Stas [6]: Preparing data")
+                print("Plots - Stas [6]: preparing data")
 
                 if(nrow(rv_df$dat_all)==0){return()}
                 if(length(rv_stas$ctries_ctry)==0){return()}
@@ -5419,8 +5450,6 @@ server <- function(input, output, session) {
                         rv_stas$vertical_lines <- subper_list[[2]]
                 }
                 
-                print(rv_stas$tibble_list)
-
                 return(rv_stas$tibble_list)
 
         })
@@ -5431,259 +5460,271 @@ server <- function(input, output, session) {
                 rv_plots$stas_counter <- rv_plots$stas_counter +1
                 print(paste0("Render stas plot ", rv_plots$stas_counter, "/", rv_plots$stas_counter_total))
 
-                        rectangle_text <- rv_stas$rectangle_text
-                        vertical_lines <- rv_stas$vertical_lines
+                rectangle_text <- rv_stas$rectangle_text
+                vertical_lines <- rv_stas$vertical_lines
 
-                print("Stas 6 (renderUI): present stas plots")
+                print("Plots - Stas [7]: present stas plots")
+                
+                if(all(is.na(table$Value))){return()}
+                
+                # Drop variables for which there all Values are NA
+                table <- table %>%
+                        group_by(Var_slash_code) %>%
+                        filter(!all(is.na(Value))) %>%
+                        ungroup
 
-                if(!all(is.na(table$Value))){
 
-                        # Input for title, subtitle Y-axis and source
-                        title_text <- if(rv_stas$title){
-                                unique(table$Title)
-                        }
+                # Input for title, subtitle Y-axis and source
+                title_text <- if(rv_stas$title){unique(table$Title)}
+                yaxis_units <- if(rv_stas$yaxis){unique(table$Y_axis)} else {NULL}
 
-                        yaxis_units <- if(rv_stas$yaxis){
-                                unique(table$Y_axis)
-                        } else {NULL}
+                if(rv_stas$source){
+                        graph_source <- unique(table$Database)
+                        graph_source[graph_source=="WDI"] <- "World Development Indicators"
+                        graph_source <- paste(graph_source, collapse = ",")
+                        graph_source <- paste0(graph_source, ".")
+                }
 
-                        if(rv_stas$source){
-                                graph_source <- unique(table$Database)
-                                graph_source[graph_source=="WDI"] <- "World Development Indicators"
-                                graph_source <- paste(graph_source, collapse = ",")
-                                graph_source <- paste0(graph_source, ".")
-                        }
+                # Year axis intervals: if less than 30 years covered, then include all years, otherwise every 2 years
+                intervals <- ifelse(rv_stas$time_range[2] - rv_stas$time_range[1] < 30, 1, 2)
 
-                        # Year axis intervals: if less than 30 years covered, then include all years, otherwise every 2 years
-                        intervals <- ifelse(rv_stas$time_range[2] - rv_stas$time_range[1] < 30, 1, 2)
-
-                        # Transform data: divide by trillions/billions/millions/thousands
-                        for (i in 4:1){
-                                if(rv_stas$transform_zeros & max(abs(table$Value), na.rm = TRUE)>(10^(3*i))){
-                                        if(rv_stas$title) {
-                                                subtitle_text <- paste(
-                                                        c(subtitle_text, units_zeros[5 - i]),
-                                                        collapse = "")
-                                                separator <- if(length(subtitle_text) == 0){""} else {", "}
-                                                if(rv_stas$yaxis){
-                                                        yaxis_units <- paste(
-                                                                c(yaxis_units, units_zeros[5 - i]),
-                                                                collapse = separator)
-                                                }
-                                        }
-                                        table$Value <- table$Value/(10^(3*i))
-                                }
-                        }
-
-                        # Log transform
-                        if(rv_stas$transform_log & min(table$Value, na.rm = TRUE)>0){
-                                subtitle_text <- paste(
-                                        c(subtitle_text, " (Log transformation)"),
-                                        collapse = "")
-                                if(rv_stas$yaxis){
-                                        yaxis_units <- paste(
-                                                c(yaxis_units, " (Log transformation)"),
+                # Transform data: divide by trillions/billions/millions/thousands
+                for (i in 4:1){
+                        if(rv_stas$transform_zeros & max(abs(table$Value), na.rm = TRUE)>(10^(3*i))){
+                                if(rv_stas$title) {
+                                        subtitle_text <- paste(
+                                                c(subtitle_text, units_zeros[5 - i]),
                                                 collapse = "")
-                                }
-                                table$Value <- log(table$Value)
-                        }
-
-
-                        # Totals
-                        totals <- table %>%
-                                group_by(Year, Period) %>%
-                                summarize(total = sum(Value), .groups = 'drop')
-
-                        totals2 <- table %>%
-                                group_by(Year) %>%
-                                summarize(total = sum(Value), .groups = 'drop')
-
-                        legend_labels <- gsub("\\s*\\([^\\)]+\\)", "", as.character(unique(table$Var_name)))
-
-                        for (i in 1:length(legend_labels)){
-                                if(nchar(legend_labels[i])>20){
-                                        character_count <- 0
-                                        new_legend <- ""
-                                        legend_aux <- unlist(strsplit(legend_labels[i], " "))
-                                        for (j in 1:length(legend_aux)){
-                                                if(j==1){
-                                                        new_legend <- paste0(new_legend, legend_aux[j])
-                                                        character_count <- character_count + nchar(legend_aux[j])
-                                                }else{
-                                                        if(character_count + nchar(legend_aux[j]) < 20){
-                                                                new_legend <- paste0(new_legend, " ", legend_aux[j])
-                                                                character_count <- character_count + nchar(legend_aux[j]) + 1
-                                                        }else{
-                                                                new_legend <- paste0(new_legend, "\n", legend_aux[j])
-                                                                character_count <- 0
-                                                        }
-                                                }
+                                        separator <- if(length(subtitle_text) == 0){""} else {", "}
+                                        if(rv_stas$yaxis){
+                                                yaxis_units <- paste(
+                                                        c(yaxis_units, units_zeros[5 - i]),
+                                                        collapse = separator)
                                         }
-                                        legend_labels[i] <- new_legend
                                 }
+                                table$Value <- table$Value/(10^(3*i))
                         }
+                }
 
-                        # Actually create plot
-                        p <- ggplot(table, aes(fill = Var_name, x = Year, y = Value))+
-                                geom_bar(position="stack",
-                                        stat = "identity",
-                                        colour = "black", 
-                                        na.rm = TRUE) +
-                                scale_fill_brewer(palette=rv_stas$color, labels = legend_labels) +
-                                theme(legend.position = rv_stas$legend_pos)+
-                                # Include title, subtitle, source and Y-axis title
-                                labs(title = title_text,
-                                        subtitle = subtitle_text,
-                                        caption = if(rv_stas$source){paste("Source: ", graph_source, sep = "")},
-                                        y = if(rv_stas$yaxis){yaxis_units} else {NULL}
+                # Log transform
+                if(rv_stas$transform_log & min(table$Value, na.rm = TRUE)>0){
+                        subtitle_text <- paste(
+                                c(subtitle_text, " (Log transformation)"),
+                                collapse = "")
+                        if(rv_stas$yaxis){
+                                yaxis_units <- paste(
+                                        c(yaxis_units, " (Log transformation)"),
+                                        collapse = "")
+                        }
+                        table$Value <- log(table$Value)
+                }
+
+
+                # Totals
+                totals <- table %>%
+                        group_by(Year, Period) %>%
+                        summarize(total = sum(Value), .groups = 'drop')
+
+                totals2 <- table %>%
+                        group_by(Year) %>%
+                        summarize(total = sum(Value), .groups = 'drop')
+
+                legend_labels <- gsub("\\s*\\([^\\)]+\\)", "", as.character(unique(table$Var_name)))
+                
+                legend_labels <- multiline_text_fun(text_vector = legend_labels, number_characters = 20)
+
+                # Actually create plot
+                p <- ggplot(table, aes(fill = Var_name, x = Year, y = Value))+
+                        geom_bar(position="stack",
+                                stat = "identity",
+                                colour = "black", 
+                                na.rm = TRUE) +
+                        scale_fill_brewer(palette=rv_stas$color, labels = legend_labels) +
+                        theme(legend.position = rv_stas$legend_pos)+
+                        # Include title, subtitle, source and Y-axis title
+                        labs(title = title_text,
+                                subtitle = subtitle_text,
+                                caption = if(rv_stas$source){paste("Source: ", graph_source, sep = "")},
+                                y = if(rv_stas$yaxis){yaxis_units} else {NULL}
+                        ) +
+                        # Aesthetics
+                        theme(panel.background = element_blank(),
+                                panel.border = element_blank(),
+                                panel.grid.major = element_blank(),
+                                panel.grid.minor = element_blank(),
+                                plot.title = element_text(size = 12, face = "bold"),
+                                plot.margin = margin(0.25, 0.25, 1, 0.25, "cm"),
+                                plot.caption = element_text(hjust = 0, size = 10),
+                                axis.ticks.x = element_blank(),
+                                axis.ticks.y = element_blank(),
+                                axis.text.x = element_text(colour = "black"),
+                                axis.text.y = element_text(colour = "black"),
+                                text = element_text(size = 12,  family = isolate(rv_stas$font)),
+                                legend.title = element_blank()
+                        )+
+                        # Define intervals of Year axis
+                        scale_x_continuous(name = "",
+                                breaks = seq(rv_stas$time_range[1],
+                                        rv_stas$time_range[2],
+                                        by = intervals)
+                        )+
+                        coord_cartesian(xlim = c(rv_stas$time_range[1], rv_stas$time_range[2]))
+
+
+                # Include data labels
+                if(rv_stas$data_labels){p <- p +
+                        geom_text(data = table,
+                                aes(
+                                        x = Year,
+                                        y = Value,
+                                        label = format(round(as.numeric(Value), rv_stas$digits),
+                                                nsmall = rv_stas$digits, big.mark = ",")),
+                                position = position_stack(vjust=0.5),
+                                size = 3,
+                                family = rv_stas$font, 
+                                na.rm = TRUE) +
+                        geom_text(data = totals,
+                                aes(x = Year,
+                                y = total,
+                                label = format(round(as.numeric(total), rv_stas$digits),
+                                        nsmall = rv_stas$digits, big.mark = ",")
+                                ),
+                                vjust = -1,
+                                hjust = 0.5,
+                                size = 3,
+                                family = input$gr_bar_id_font,
+                                inherit.aes = FALSE, 
+                                na.rm = TRUE) +
+                        geom_point(data = totals, aes(x = Year, y = total), color = "black", size = 2, inherit.aes = FALSE, na.rm = TRUE)
+                }
+
+                # Increase range of Y axis to make room for the box indicating subperiod
+                y_min <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
+                y_max <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
+                y_range <- y_max - y_min
+
+                # Include thousands separating comma in Y-axis
+                p <- p + scale_y_continuous(name = yaxis_units,
+                        labels = comma_format(accuracy = 1/10^(rv_stas$digits_y), big.mark = ","),
+                        breaks = pretty_breaks(),
+                        limits = c(y_min, y_max + (y_range*0.1),
+                                inherit.aes = FALSE)
+                )
+
+                # Get new axis limits that will be used as inputs to define the size of the subperiod rectangles
+                y_min_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
+                y_max_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
+                y_range_new <- y_max - y_min
+
+                #Define other parameters that will be used as inputs to define the size of the subperiod rectangles
+                size_factor <- 0.08
+                ALPHA <- 0.15
+
+                # Subperiod rectangles, their labels and the dotted lines separating
+                if(rv_input$time_subper & rv_stas$time_subper){
+                        p <- p +
+                                geom_rect(data = rectangle_text,
+                                        aes(NULL, NULL, xmin = my_min_fun(Year_start), xmax = my_max_fun(Year_end)),
+                                        ymin = y_max_new - y_range_new * size_factor ,
+                                        ymax = y_max_new,
+                                        colour = NA,
+                                        fill="grey",
+                                        alpha = 0.5,
+                                        inherit.aes = FALSE
                                 ) +
-                                # Aesthetics
-                                theme(panel.background = element_blank(),
-                                        panel.border = element_blank(),
-                                        panel.grid.major = element_blank(),
-                                        panel.grid.minor = element_blank(),
-                                        plot.title = element_text(size = 12, face = "bold"),
-                                        plot.margin = margin(0.25, 0.25, 1, 0.25, "cm"),
-                                        plot.caption = element_text(hjust = 0, size = 10),
-                                        axis.ticks.x = element_blank(),
-                                        axis.ticks.y = element_blank(),
-                                        axis.text.x = element_text(colour = "black"),
-                                        axis.text.y = element_text(colour = "black"),
-                                        text = element_text(size = 12,  family = isolate(rv_stas$font)),
-                                        legend.title = element_blank()
-                                )+
-                                # Define intervals of Year axis
-                                scale_x_continuous(name = "",
-                                        breaks = seq(rv_stas$time_range[1],
-                                                rv_stas$time_range[2],
-                                                by = intervals)
-                                )+
-                                coord_cartesian(xlim = c(rv_stas$time_range[1], rv_stas$time_range[2]))
-
-
-                        # Include data labels
-                        if(rv_stas$data_labels){p <- p +
-                                geom_text(data = table,
-                                        aes(
-                                                x = Year,
-                                                y = Value,
-                                                label = format(round(as.numeric(Value), rv_stas$digits),
-                                                        nsmall = rv_stas$digits, big.mark = ",")),
-                                        position = position_stack(vjust=0.5),
-                                        size = 3,
-                                        family = rv_stas$font, 
-                                        na.rm = TRUE) +
-                                geom_text(data = totals,
-                                        aes(x = Year,
-                                        y = total,
-                                        label = format(round(as.numeric(total), rv_stas$digits),
-                                                nsmall = rv_stas$digits, big.mark = ",")
+                                geom_label(data = rectangle_text,
+                                        aes(x = Year_start + (Year_end - Year_start) / 2,
+                                                y = y_max_new * ALPHA + (y_max_new - y_range_new * size_factor) * (1 - ALPHA),
+                                                label = Period,
+                                                family = rv_stas$font
                                         ),
-                                        vjust = -1,
-                                        hjust = 0.5,
-                                        size = 3,
-                                        family = input$gr_bar_id_font,
-                                        inherit.aes = FALSE, 
-                                        na.rm = TRUE) +
-                                geom_point(data = totals, aes(x = Year, y = total), color = "black", size = 2, inherit.aes = FALSE)
-                        }
-
-                        # Increase range of Y axis to make room for the box indicating subperiod
-                        y_min <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
-                        y_max <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
-                        y_range <- y_max - y_min
-
-                        # Include thousands separating comma in Y-axis
-                        p <- p + scale_y_continuous(name = yaxis_units,
-                                labels = comma_format(accuracy = 1/10^(rv_stas$digits_y), big.mark = ","),
-                                breaks = pretty_breaks(),
-                                limits = c(y_min, y_max + (y_range*0.1),
+                                        size = 3.3,
+                                        fill = "grey",
+                                        alpha = 0,
+                                        label.size = NA,
+                                        hjust = "center",
+                                        vjust = "bottom",
                                         inherit.aes = FALSE)
-                        )
 
-                        # Get new axis limits that will be used as inputs to define the size of the subperiod rectangles
-                        y_min_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
-                        y_max_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
-                        y_range_new <- y_max - y_min
-
-                        #Define other parameters that will be used as inputs to define the size of the subperiod rectangles
-                        size_factor <- 0.08
-                        ALPHA <- 0.15
-
-                        # Subperiod rectangles, their labels and the dotted lines separating
-                        if(rv_input$time_subper & rv_stas$time_subper){
-                                p <- p +
-                                        geom_rect(data = rectangle_text,
-                                                aes(NULL, NULL, xmin = my_min_fun(Year_start), xmax = my_max_fun(Year_end)),
-                                                ymin = y_max_new - y_range_new * size_factor ,
-                                                ymax = y_max_new,
-                                                colour = NA,
-                                                fill="grey",
-                                                alpha = 0.5,
-                                                inherit.aes = FALSE
-                                        ) +
-                                        geom_label(data = rectangle_text,
-                                                aes(x = Year_start + (Year_end - Year_start) / 2,
-                                                        y = y_max_new * ALPHA + (y_max_new - y_range_new * size_factor) * (1 - ALPHA),
-                                                        label = Period,
-                                                        family = rv_stas$font
-                                                ),
-                                                size = 3.3,
-                                                fill = "grey",
-                                                alpha = 0,
-                                                label.size = NA,
-                                                hjust = "center",
-                                                vjust = "bottom",
-                                                inherit.aes = FALSE)
-
-                                for (i in vertical_lines) {
-                                        p <- p + geom_segment(x = i,
-                                                y = y_max_new,
+                        for (i in vertical_lines) {
+                                p <- p + geom_segment(x = i,
+                                        y = y_max_new,
+                                        xend = i,
+                                        yend = y_max_new - y_range_new * size_factor,
+                                        colour = "white",
+                                        size = 1,
+                                        alpha = 1,
+                                        inherit.aes = FALSE) +
+                                        geom_segment(x = i,
+                                                y = y_max_new - y_range_new * size_factor,
                                                 xend = i,
-                                                yend = y_max_new - y_range_new * size_factor,
-                                                colour = "white",
-                                                size = 1,
-                                                alpha = 1,
-                                                inherit.aes = FALSE) +
-                                                geom_segment(x = i,
-                                                        y = y_max_new - y_range_new * size_factor,
-                                                        xend = i,
-                                                        yend = -Inf,
-                                                        colour = "grey",
-                                                        linetype = "dotted",
-                                                        inherit.aes = FALSE)
-                                }
+                                                yend = -Inf,
+                                                colour = "grey",
+                                                linetype = "dotted",
+                                                inherit.aes = FALSE)
                         }
+                }
 
-                        # Period average lines
-                        if(rv_stas$time_subper_avg){
-                                if(rv_input$time_subper & rv_stas$time_subper){
+                # Period average lines
+                if(rv_stas$time_subper_avg){
+                        if(rv_input$time_subper & rv_stas$time_subper){
 
-                                        vec_average <- totals %>%
-                                                group_by(Period) %>%
-                                                summarise_at(vars(total),
-                                                        list(Value_avg = mean),
-                                                        na.rm = TRUE)
-                                        vec_average <- as.data.frame(vec_average)
+                                vec_average <- totals %>%
+                                        group_by(Period) %>%
+                                        summarise_at(vars(total),
+                                                list(Value_avg = mean),
+                                                na.rm = TRUE)
+                                vec_average <- as.data.frame(vec_average)
 
-                                        rectangle_text <- merge(x = rectangle_text,
-                                                y = as.data.frame(vec_average),
-                                                by = "Period")
+                                rectangle_text <- merge(x = rectangle_text,
+                                        y = as.data.frame(vec_average),
+                                        by = "Period")
 
-                                        for(i in 1:nrow(rectangle_text)){
-                                                yvalue <- vec_average %>% filter(Period == rectangle_text$Period[i]) %>% select(Value_avg)
-                                                period_average <- yvalue[[1]]
-                                                p <- p + geom_segment(x = rectangle_text$Year_start[i],
-                                                        y = period_average,
-                                                        xend = rectangle_text$Year_end[i],
-                                                        yend = period_average,
-                                                        inherit.aes = FALSE)
-                                        }
-                                        p <- p + geom_label(
-                                                data = rectangle_text,
-                                                aes(x = Year_start+(Year_end-Year_start) / 2,
-                                                        y = (y_max_new - y_range_new * size_factor) - (y_max_new - (y_max_new * ALPHA + (y_max_new - y_range_new * size_factor) * (1 - ALPHA))),
-                                                        label = paste("Avg. (", round((Year_start + 0.5), 0), "-", round((Year_end - 0.5), 0) , "): ", format(round(as.numeric(Value_avg), rv_stas$digits), nsmall = rv_stas$digits, big.mark = ","), sep = ""),
+                                for(i in 1:nrow(rectangle_text)){
+                                        yvalue <- vec_average %>% filter(Period == rectangle_text$Period[i]) %>% select(Value_avg)
+                                        period_average <- yvalue[[1]]
+                                        p <- p + geom_segment(x = rectangle_text$Year_start[i],
+                                                y = period_average,
+                                                xend = rectangle_text$Year_end[i],
+                                                yend = period_average,
+                                                inherit.aes = FALSE)
+                                }
+                                p <- p + geom_label(
+                                        data = rectangle_text,
+                                        aes(x = Year_start+(Year_end-Year_start) / 2,
+                                                y = (y_max_new - y_range_new * size_factor) - (y_max_new - (y_max_new * ALPHA + (y_max_new - y_range_new * size_factor) * (1 - ALPHA))),
+                                                label = paste("Avg. (", round((Year_start + 0.5), 0), "-", round((Year_end - 0.5), 0) , "): ", format(round(as.numeric(Value_avg), rv_stas$digits), nsmall = rv_stas$digits, big.mark = ","), sep = ""),
+                                                family = rv_stas$font
+                                        ),
+                                        size = 3.3,
+                                        alpha = 0,
+                                        label.size = NA,
+                                        hjust = "center",
+                                        vjust = "bottom",
+                                        inherit.aes = FALSE)
+
+                        }  else {
+                                # Full period average
+                                vec_average <- totals2 %>%
+                                        summarise_at(vars(total),
+                                                list(Value_avg = mean),
+                                                na.rm = TRUE)
+                                yvalue <- vec_average %>% select(Value_avg)
+                                yvalue <- yvalue[[1]]
+
+                                p <- p +
+                                        geom_segment(
+                                        aes(
+                                                x = rv_stas$time_range[1],
+                                                y = yvalue,
+                                                xend = rv_stas$time_range[2],
+                                                yend = yvalue
+                                        ),
+                                        inherit.aes = FALSE)+
+                                        geom_label(
+                                                aes(x = rv_stas$time_range[1] + (rv_stas$time_range[2] - rv_stas$time_range[1]) / 2,
+                                                        y = (y_max_new - y_range_new * size_factor) - (y_max_new - (y_max_new * ALPHA + (y_max_new - y_range_new * size_factor)*(1 - ALPHA))),
+                                                        label = paste("Avg. (", rv_stas$time_range[1], "-", rv_stas$time_range[2], "): ", format(round(as.numeric(yvalue), rv_stas$digits), nsmall = rv_stas$digits, big.mark = ","), sep = ""),
                                                         family = rv_stas$font
                                                 ),
                                                 size = 3.3,
@@ -5692,67 +5733,35 @@ server <- function(input, output, session) {
                                                 hjust = "center",
                                                 vjust = "bottom",
                                                 inherit.aes = FALSE)
-
-                                }  else {
-                                        # Full period average
-                                        vec_average <- totals2 %>%
-                                                summarise_at(vars(total),
-                                                        list(Value_avg = mean),
-                                                        na.rm = TRUE)
-                                        yvalue <- vec_average %>% select(Value_avg)
-                                        yvalue <- yvalue[[1]]
-
-                                        p <- p +
-                                                geom_segment(
-                                                aes(
-                                                        x = rv_stas$time_range[1],
-                                                        y = yvalue,
-                                                        xend = rv_stas$time_range[2],
-                                                        yend = yvalue
-                                                ),
-                                                inherit.aes = FALSE)+
-                                                geom_label(
-                                                        aes(x = rv_stas$time_range[1] + (rv_stas$time_range[2] - rv_stas$time_range[1]) / 2,
-                                                                y = (y_max_new - y_range_new * size_factor) - (y_max_new - (y_max_new * ALPHA + (y_max_new - y_range_new * size_factor)*(1 - ALPHA))),
-                                                                label = paste("Avg. (", rv_stas$time_range[1], "-", rv_stas$time_range[2], "): ", format(round(as.numeric(yvalue), rv_stas$digits), nsmall = rv_stas$digits, big.mark = ","), sep = ""),
-                                                                family = rv_stas$font
-                                                        ),
-                                                        size = 3.3,
-                                                        alpha = 0,
-                                                        label.size = NA,
-                                                        hjust = "center",
-                                                        vjust = "bottom",
-                                                        inherit.aes = FALSE)
-                                }
                         }
+                }
 
-                        # Correct digits if numbers are repeated in Y-axis
+                # Correct digits if numbers are repeated in Y-axis
+                x <- ggplot_build(p)$layout$panel_params[[1]]$y.sec$breaks
+                x <- x[!is.na(x)]
+                yaxis_number_labels <- length(x)
+                yaxis_number_labels_obs <- length(unique(round(x, rv_stas$digits_y)))
+                digits <- rv_stas$digits_y
+
+                while(yaxis_number_labels > yaxis_number_labels_obs){
+                        digits <- digits + 1
+                        p <- p + scale_y_continuous(name = yaxis_units,
+                                labels = comma_format(accuracy = 1/10^(digits), big.mark = ","),
+                                breaks = pretty_breaks())
+
                         x <- ggplot_build(p)$layout$panel_params[[1]]$y.sec$breaks
                         x <- x[!is.na(x)]
                         yaxis_number_labels <- length(x)
-                        yaxis_number_labels_obs <- length(unique(round(x, rv_stas$digits_y)))
-                        digits <- rv_stas$digits_y
-
-                        while(yaxis_number_labels > yaxis_number_labels_obs){
-                                digits <- digits + 1
-                                p <- p + scale_y_continuous(name = yaxis_units,
-                                        labels = comma_format(accuracy = 1/10^(digits), big.mark = ","),
-                                        breaks = pretty_breaks())
-
-                                x <- ggplot_build(p)$layout$panel_params[[1]]$y.sec$breaks
-                                x <- x[!is.na(x)]
-                                yaxis_number_labels <- length(x)
-                                yaxis_number_labels_obs <- length(unique(round(x, digits)))
-                        }
-
-                        # Append plot to the list of plots
-                        rv_plots$stas <- list.append(rv_plots$stas, p)
-                        rv_plots$stas_data <- list.append(rv_plots$stas_data, table)
-
-                        # Show plot
-                        renderPlot(p)
-
+                        yaxis_number_labels_obs <- length(unique(round(x, digits)))
                 }
+
+                # Append plot to the list of plots
+                rv_plots$stas <- list.append(rv_plots$stas, p)
+                rv_plots$stas_data <- list.append(rv_plots$stas_data, table)
+
+                # Show plot
+                renderPlot(p)
+
         }
 
         # Call Prep data and Create plots
@@ -7293,57 +7302,13 @@ server <- function(input, output, session) {
         #                                 aux <- aux[aux$not_filtered == TRUE, ]
         #                                 
         #                                 excluded_countries <- setdiff(rv_df$dat_all$Country, aux$Country)
-        #                                 excluded_countries_text <- ""
-        #                                 
-        #                                 if(length(excluded_countries)>0){
-        #                                         excluded_countries_text <- "Excluded countries: "
-        #                                         character_count <- nchar(excluded_countries_text)
-        #                                         for (j in 1:length(excluded_countries)){
-        #                                                 if(character_count<90){
-        #                                                         if(j==1){
-        #                                                                 excluded_countries_text <- paste0(excluded_countries_text, excluded_countries[j])
-        #                                                                 character_count <- character_count + nchar(excluded_countries[j]) + 2  
-        #                                                         }else{
-        #                                                                 excluded_countries_text <- paste0(excluded_countries_text, "; ", excluded_countries[j])
-        #                                                                 character_count <- character_count + nchar(excluded_countries[j]) + 2
-        #                                                         }
-        # 
-        #                                                 }else{
-        #                                                         excluded_countries_text <- paste0(excluded_countries_text, "; \n", excluded_countries[j])
-        #                                                         character_count <- 0
-        #                                                 }
-        #                                                 if(j == length(excluded_countries)){
-        #                                                         excluded_countries_text <- paste0(excluded_countries_text,".")
-        #                                                 }
-        #                                                 
-        #                                         }
-        #                                 }else{excluded_countries_text <- ""}
-        #                                 
-        #                                 if(length(excluded_countries)>0){
-        #                                         character_count <- 0
-        #                                         excluded_countries_text_short <- "Excluded countries: "
-        #                                         character_count <- nchar(excluded_countries_text_short)
-        #                                         for (j in 1:length(excluded_countries)){
-        #                                                 if(character_count<40){
-        #                                                         if(j==1){
-        #                                                                 excluded_countries_text_short <- paste0(excluded_countries_text_short, excluded_countries[j])
-        #                                                                 character_count <- character_count + nchar(excluded_countries[j]) + 2  
-        #                                                         }else{
-        #                                                                 excluded_countries_text_short <- paste0(excluded_countries_text_short, "; ", excluded_countries[j])
-        #                                                                 character_count <- character_count + nchar(excluded_countries[j]) + 2
-        #                                                         }
-        #                                                         
-        #                                                 }else{
-        #                                                         excluded_countries_text_short <- paste0(excluded_countries_text_short, "; \n", excluded_countries[j])
-        #                                                         character_count <- 0
-        #                                                 }
-        #                                                 if(j == length(excluded_countries)){
-        #                                                         excluded_countries_text_short <- paste0(excluded_countries_text_short,".")
-        #                                                 }
-        #                                                 
-        #                                         }
-        #                                 }else{excluded_countries_text_short <- ""}
-        # 
+        # for (j in 1:length(excluded_countries)){
+        #         excluded_countries_text <- "Excluded countries: "
+        #         excluded_countries_text <- paste0(excluded_countries_text, "; ", excluded_countries[j])
+        #         excluded_countries_text <- paste0(excluded_countries_text, ".")
+        # }
+        # aux$excluded_countries <- multiline_text_fun(text_vector = excluded_countries_text, number_characters = 90)
+        # aux$excluded_countries_short <-  multiline_text_fun(text_vector = excluded_countries_text, number_characters = 40)
         #                                 
         #                                 eval(parse(text = paste0("rv_scat$excluded_countries", i, "<- ", as.character("excluded_countries_text"))))
         #                                 eval(parse(text = paste0("rv_scat$excluded_countries_short", i, "<- ", as.character("excluded_countries_text_short"))))
