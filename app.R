@@ -32,6 +32,9 @@ library(extrafont)
 library(Jmisc)
 library(ggrepel)
 library(ggh4x)
+library(forcats)
+library(lattice)
+library(zoo)
 
 print("*******************************")
 print("**RUNNING CODE OUTSIDE SERVER**")
@@ -43,7 +46,7 @@ cat("\n")
 # Load dataframes from WDI package to get countries
 ctry_df <- as.data.frame(WDI_data$country)
 ctry_vec <- sort(ctry_df[ctry_df[ , "region"] != "Aggregates", "country"])
-reg_vec <- sort(ctry_df[ctry_df[ , "region"] == "Aggregates", "country"])
+reg_vec <<- sort(ctry_df[ctry_df[ , "region"] == "Aggregates", "country"])
 
 # Create dataframe with flags
 flags_df <- filter(ctry_df, !region %in% c("Aggregates")) %>% select(country, iso2c, iso3c)
@@ -315,8 +318,8 @@ nice_wdi_fun <- function(countries_ctry,
                 proc_wdi$country %in% countries_ctry , "Analized",
                 ifelse(proc_wdi$country %in% countries_str, "Structural",
                         ifelse(proc_wdi$country %in% countries_asp, "Aspirational",
-                                ifelse(proc_wdi$country %in% countries_reg, "Region",
-                                        ifelse((!proc_wdi$country %in% countries_reg) & (proc_wdi$country %in% reg_vec),"Rest (region)" , "Rest")
+                                ifelse(proc_wdi$country %in% countries_reg, "Aggregate",
+                                        ifelse((!proc_wdi$country %in% countries_reg) & (proc_wdi$country %in% reg_vec),"Rest (aggregate)" , "Rest")
                                 )
                         )
                 )
@@ -854,7 +857,7 @@ def_list_stam <- list(
         transform_zeros = TRUE,
         transform_log = FALSE,
         ctry_short = TRUE,
-        digits = 1,
+        digits = 0,
         digits_y = 0,
         color = "Set2",
         font = "Calibri",
@@ -881,7 +884,7 @@ def_list_line <- list(
         digits = 1,
         digits_y = 0,
         font = "Calibri",
-        highlight = TRUE,
+        highlight = FALSE,
         highlight_ctry = def_list_data$ctries_ctry,
         highlight_color = "#B02307",
         highlight_legend = TRUE
@@ -1075,6 +1078,9 @@ ui <- shinyUI(
                 
                 # Theme
                 theme = shinytheme("cerulean"),
+                        
+                # Navegation bar rounded borders style
+                tags$style(HTML(".navbar {border-radius: 5px}")),                
                 
                 # Header
                 titlePanel("Download & Plot Data Tool"),
@@ -1651,7 +1657,7 @@ ui <- shinyUI(
                                                                 # Select statistic
                                                                 pickerInput(
                                                                         inputId = "gr_mult_id_stat",
-                                                                        label = "Method of data aggregation by period", 
+                                                                        label = "Method of aggregation by period", 
                                                                         choices = stats_vec,
                                                                         selected = def_list_mult$stat,
                                                                         multiple = FALSE
@@ -2078,7 +2084,7 @@ ui <- shinyUI(
                                                                 # Select statistic
                                                                 pickerInput(
                                                                         inputId = "gr_stam_id_stat",
-                                                                        label = "Method of data aggregation by period", 
+                                                                        label = "Method of aggregation by period", 
                                                                         choices = stats_vec,
                                                                         selected = def_list_stam$stat,
                                                                         multiple = FALSE
@@ -2676,6 +2682,7 @@ ui <- shinyUI(
                                 )
                         )
                 ),
+
                 # Footer
                 hr(),
                 tags$p("Developed by Federico Ganz | federicoganz@gmail.com")
@@ -3108,7 +3115,7 @@ server <- function(input, output, session) {
                 df_external$Ctry_group_num[df_external$Country %in% input$in_id_ctries_asp] <- 3
                 df_external$Ctry_group[df_external$Country %in% input$in_id_ctries_asp] <- "Aspirational"
                 df_external$Ctry_group_num[df_external$Country %in% input$in_id_ctries_reg] <- 4
-                df_external$Ctry_group[df_external$Country %in% input$in_id_ctries_reg] <- "Region"
+                df_external$Ctry_group[df_external$Country %in% input$in_id_ctries_reg] <- "Aggregate"
                 df_external$Ctry_group_num[!(df_external$Country %in% input$in_id_ctries_ctry) & 
                                 !(df_external$Country %in% input$in_id_ctries_str) & 
                                 !(df_external$Country %in% input$in_id_ctries_asp) &
@@ -3128,7 +3135,7 @@ server <- function(input, output, session) {
                                 !(df_external$Country %in% input$in_id_ctries_str) & 
                                 !(df_external$Country %in% input$in_id_ctries_asp) &
                                 !(df_external$Country %in% input$in_id_ctries_reg) &
-                                (df_external$Country %in% reg_vec)] <- "Rest (region)"
+                                (df_external$Country %in% reg_vec)] <- "Rest (aggregate)"
                 
                 df_external <- df_external[order(
                         df_external$Var_name,
@@ -3940,12 +3947,44 @@ server <- function(input, output, session) {
                         cat("\n")
                         return()}
                 
+                
+                testing.NA <- matrix(ncol= rv_input$time_range_end - rv_input$time_range_start+1, 
+                        nrow=length(unique(rv_df$dat_all$Var_code)))
+                
                 # Reshape and select data
                 aux <- reshape2::dcast(rv_df$dat_all, Ctry_iso + Year ~ Var_name, value.var="Value")
                 
-                # Create plot
-                p <- prepare_missing_values_graph(aux, ts_id = "Year")
+                for (i in 3:dim(aux)[2])
+                {
+                        testing.NA[i-2,] <- tapply(aux[[i]], aux$Year, function(x) 100* sum(is.na(x)) / length(x))
+                }
                 
+                dimnames(testing.NA) <- list(
+                        names(aux)[3:length(names(aux))],
+                        sort(unique(aux$Year)))
+                
+                testing.NA <- t(testing.NA)
+                my.at <- seq(from = 0, to = 100, by = 10)
+                myColorkey <- list(at=my.at, 
+                        labels=list(at=my.at, labels=my.at), 
+                        space="bottom", 
+                        title = list(label = "Percentage of missing values", cex=1)
+                        )
+                lattice.options(axis.padding=list(factor=0.5))
+                cols <- brewer.pal(10, "RdYlGn")
+                
+                p <- levelplot(testing.NA,
+                        scales=list(x=list(rot=90), 
+                                y=list(function(x) str_wrap(x, width = 15)), tck = c(0,0)),
+                        main = NULL,
+                        xlab = NULL,
+                        ylab = NULL,
+                        border = "black",
+                        colorkey = myColorkey,
+                        col.regions = rev(cols))
+                
+                p$legend$bottom$args$draw <- TRUE
+
                 print("Summary - plot: end renderUI")
                 print("****************************")
                 cat("\n")
@@ -4278,9 +4317,10 @@ server <- function(input, output, session) {
                                 y = if(rv_bar$yaxis){yaxis_units} else {NULL}
                         )+
                         # Aesthetics
-                        theme(panel.background = element_blank(),
-                                panel.border = element_blank(),
-                                panel.grid.major = element_blank(),
+                        theme_minimal() +
+                        theme(panel.border = element_blank(),
+                                panel.grid.major.x = element_blank(),
+                                panel.grid.major.y = element_line(linetype = "dashed"),
                                 panel.grid.minor = element_blank(),
                                 plot.title = element_text(size = 12, face = "bold"),
                                 plot.margin = margin(0.25, 0.25, 1, 0.25, "cm"),
@@ -4680,7 +4720,7 @@ server <- function(input, output, session) {
                 
                 # Country (if previously selected country is in new dataset, keep selection, else select first country from vector)
                 aux_ctry <- unique(rv_df$dat_all$Country)
-                if(setequal(rv_mult$ctries, aux_ctry)){
+                if(!setequal(rv_mult$ctries, aux_ctry)){
                         rv_mult$ctries <- aux_ctry
                 }
                 
@@ -4714,6 +4754,7 @@ server <- function(input, output, session) {
                 rv_mult$time_subper <- input$gr_mult_id_time_subper
                 rv_mult$transform_zeros <- input$gr_mult_id_transform_zeros
                 rv_mult$transform_log <- input$gr_mult_id_transform_log
+                rv_mult$ctry_short = input$gr_mult_id_ctry_short
                 rv_mult$digits <- input$gr_mult_id_digits
                 rv_mult$digits_y <- input$gr_mult_id_digits_y
                 rv_mult$font <- input$gr_mult_id_font
@@ -5039,9 +5080,10 @@ server <- function(input, output, session) {
                         )+
 
                         # Aesthetics
-                        theme(panel.background = element_blank(),
+                        theme(panel.background = element_rect(fill=NA),
                                 panel.border = element_blank(),
-                                panel.grid.major = element_blank(),
+                                panel.grid.major.x = element_blank(),
+                                panel.grid.major.y = element_line(color = "grey90", linetype = "dashed"),
                                 panel.grid.minor = element_blank(),
                                 plot.title = element_text(size = 12, face = "bold"),
                                 plot.margin = margin(0.25, 0.25, 1, 0.25, "cm"),
@@ -5705,16 +5747,19 @@ server <- function(input, output, session) {
                                 na.rm = TRUE) +
                         scale_fill_brewer(palette=rv_stas$color, labels = legend_labels) +
                         theme(legend.position = rv_stas$legend_pos)+
+                        
                         # Include title, subtitle, source and Y-axis title
                         labs(title = title_text,
                                 subtitle = subtitle_text,
                                 caption = if(rv_stas$source){paste("Source: ", graph_source, sep = "")},
                                 y = if(rv_stas$yaxis){yaxis_units} else {NULL}
                         ) +
+                        
                         # Aesthetics
-                        theme(panel.background = element_blank(),
-                                panel.border = element_blank(),
-                                panel.grid.major = element_blank(),
+                        theme_minimal() +
+                        theme(panel.border = element_blank(),
+                                panel.grid.major.x = element_blank(),
+                                panel.grid.major.y = element_line(linetype = "dashed"),
                                 panel.grid.minor = element_blank(),
                                 plot.title = element_text(size = 12, face = "bold"),
                                 plot.margin = margin(0.25, 0.25, 1, 0.25, "cm"),
@@ -6218,7 +6263,7 @@ server <- function(input, output, session) {
                 
                 # Country (if previously selected country is in new dataset, keep selection, else select first country from vector)
                 aux_ctry <- unique(rv_df$dat_all$Country)
-                if(setequal(rv_stam$ctries, aux_ctry)){
+                if(!setequal(rv_stam$ctries, aux_ctry)){
                         rv_stam$ctries <- aux_ctry
                 }
                 
@@ -6599,9 +6644,11 @@ server <- function(input, output, session) {
                         }
 
                 # Aesthetics
-                p <- p + theme(panel.background = element_blank(),
+                p <- p + 
+                        theme(panel.background = element_rect(fill=NA),
                                 panel.border = element_blank(),
-                                panel.grid.major = element_blank(),
+                                panel.grid.major.x = element_blank(),
+                                panel.grid.major.y = element_line(color = "grey90", linetype = "dashed"),
                                 panel.grid.minor = element_blank(),
                                 plot.title = element_text(size = 12, face = "bold"),
                                 plot.margin = margin(0.25, 2, 1, 0.25, "cm"),
@@ -7019,8 +7066,8 @@ server <- function(input, output, session) {
 
                 # Country (if previously selected country is in new dataset, keep selection, else select first country from vector)
                 aux_ctry <- unique(rv_df$dat_all$Country)
-                if(!rv_line$ctries %in% aux_ctry){
-                        rv_line$ctries <- aux_ctry[1]
+                if(!setequal(rv_line$ctries, aux_ctry)){
+                        rv_line$ctries <- aux_ctry
                 }
 
                 # Variables (select all variables from new dataset)
@@ -7171,22 +7218,88 @@ server <- function(input, output, session) {
                 if(all(is.na(table$Value))) {subtitle_text <- "No data available"}
         
                 # Short country names
-                if(rv_line$ctry_short){table$Country_aux <- table$Ctry_iso}else{table$Country_aux <- table$Country}
+                if(rv_line$ctry_short){
+                        table$Country_aux <- table$Ctry_iso
+                }else{
+                        table$Country_aux <- table$Country
+                        }
 
                 # Actually Create plot
         
                 # Plot if no single country highlight option
                 if(!rv_line$highlight){
-                        p <- ggplot(data = table, aes(x = Year, y = Value)) +
-                                geom_line(data = table, aes(colour = Country_aux), size = 0.75) +
-                                geom_point(data = table, aes(colour = Country_aux), size = 0.75)
+                        
+                        table <- table %>% group_by(Country_aux) %>% mutate(Value_aux = na.locf(Value, na.rm = F))
+                        
+                        aux_table <- table[!is.na(table$Value),]
+
+                        aux_table <- aux_table %>%
+                                group_by(Country_aux) %>%
+                                slice(which.max(Year)) %>%
+                                select(c("Country_aux", "Year"))
+
+                        aux_table$label2 <- aux_table$Country_aux
+
+                        table <- merge(
+                                x = table,
+                                y = aux_table,
+                                by = c("Country_aux", "Year"),
+                                all.x = TRUE
+                        )
+                        
+                        table <- table %>%
+                                arrange(Ctry_group_num, Country_aux, Year) %>%
+                                mutate(Country_aux = factor(Country_aux),
+                                        Country_aux = fct_reorder2(Country_aux, Ctry_group_num, Country)) %>%
+                                mutate(label = if_else(Year == max(Year), as.character(Country_aux), NA_character_))
+
+                        p <- ggplot(data = table, aes(x = Year, y = Value, group = Country_aux, color = Country_aux)) +
+                                geom_line() +
+                                geom_point()
+                        
+                        # Labels
+                        p <- p + geom_text_repel(data = table,
+                                aes(x = Year, y = Value_aux, group = Country_aux, color = Country_aux, label = gsub("^.*$", "  ", label)), 
+                                        family = rv_line$font,
+                                        size = 3,
+                                        segment.alpha = 0,
+                                        box.padding = 0.1,
+                                        point.padding = 0.6,
+                                        nudge_x = 0.7,
+                                        force = 0.5,
+                                        hjust = 0,
+                                        direction = "y",
+                                        na.rm = TRUE,
+                                        xlim = c(max(table$Year) + ceiling((max(table$Year)-min(table$Year))*0.04)
+                                                , max(table$Year) + ceiling((max(table$Year)-min(table$Year))*0.30))
+                                ) +
+                                geom_text_repel(data = . %>% filter(!is.na(label2)),
+                                        aes(x = Year, y = Value_aux, group = Country_aux, color = Country_aux, label = paste0(" ", label2)),
+                                        family = rv_line$font,
+                                        size = 3,
+                                        segment.curvature = 0,
+                                        segment.color = 'grey',
+                                        segment.size = 0.25,
+                                        box.padding = 0.1,
+                                        point.padding = 0.6,
+                                        nudge_x = 0.7,
+                                        force = 0.5,
+                                        hjust = 0,
+                                        direction = "y",
+                                        na.rm = TRUE,
+                                        xlim = c(max(table$Year) + ceiling((max(table$Year)-min(table$Year))*0.04)
+                                                , max(table$Year) + ceiling((max(table$Year)-min(table$Year))*0.30))
+                                )
+
+                        
+                        
                 } else{
                         # Plot if highlight option selected
                         # Filter data
                         highlighted_country_df <- filter(table,
-                                Country_aux %in% rv_line$highlight_ctry)
+                                Country %in% rv_line$highlight_ctry)
                         rest_df <- filter(table,
-                                !Country_aux %in% rv_line$highlight_ctry)
+                                !Country %in% rv_line$highlight_ctry)
         
                         # Obtain Y-value of last observation to locate label
                         highlighted_country_last_obs <- highlighted_country_df %>% drop_na(Value)
@@ -7198,8 +7311,8 @@ server <- function(input, output, session) {
                         p <- ggplot(data = table, aes(x = Year, y = Value)) +
         
                                 # Grey lines (rest of the countries)
-                                geom_line(data = rest_df, aes(x = Year, y = Value, group = Country_aux), color = "grey", size = 0.75) +
-                                geom_point(data = rest_df, aes(x = Year, y = Value, group = Country_aux), color = "grey", size = 0.75) +
+                                geom_line(data = rest_df, aes(x = Year, y = Value, group = Country_aux), color = "grey") +
+                                geom_point(data = rest_df, aes(x = Year, y = Value, group = Country_aux), color = "grey") +
         
                                 # Highlighted line
                                 geom_line(data = highlighted_country_df, aes(x = Year, y = Value), color = rv_line$highlight_color, size = 1.5) +
@@ -7216,15 +7329,29 @@ server <- function(input, output, session) {
                                         hjust = "left",
                                         vjust = "center"
                                 ) +
-                                coord_cartesian(clip = "off")
+                                coord_cartesian(clip = "off") 
+                                
                 }
-        
-                # Settings for both types (with/without highlight) of graphs
-                # Increase X axis half a year to both sides
-                x_min <- ggplot_build(p)$layout$panel_params[[1]]$x.range[1]
-                x_max <- ggplot_build(p)$layout$panel_params[[1]]$x.range[2]
-                expand_param <- (0.5 / (x_max - x_min))
-        
+                
+                # Short country names
+                if(rv_line$ctry_short){
+                        p <- p + scale_x_continuous(name="",
+                                breaks = seq(min(rv_line$time_range),
+                                        max(rv_line$time_range),
+                                        by = intervals),
+                                limits=c(min(table$Year)-0.5, max(table$Year)+ ceiling((max(table$Year)-min(table$Year))*0.08)),
+                                expand = c(0, 0)
+                        )
+                }else{
+                        p <- p + scale_x_continuous(name="",
+                                breaks = seq(min(rv_line$time_range),
+                                        max(rv_line$time_range),
+                                        by = intervals),
+                                limits=c(min(table$Year)-0.5, max(table$Year)+ ceiling((max(table$Year)-min(table$Year))*0.15)),
+                                expand = c(0, 0)
+                        )
+                }
+                
                 p <- p +
                         # Include title, subtitle, source and Y-axis title
                         labs(title  = title_text,
@@ -7232,29 +7359,23 @@ server <- function(input, output, session) {
                                 caption = if(rv_line$source){paste("Source: ", graph_source, ".", sep = "")},
                                 y = if(rv_line$yaxis){yaxis_units}
                         )+
-                        # X-axis format
-                        scale_x_continuous(name="",
-                                breaks = seq(min(rv_line$time_range),
-                                        max(rv_line$time_range),
-                                        by = intervals),
-                                expand = c(expand_param,expand_param)
-                        )+
                         # Aesthetics
+                        theme_minimal() +
                         theme(
-                                panel.background = element_blank(),
-                                panel.border = element_blank(),
-                                panel.grid.major = element_blank(),
-                                panel.grid.minor = element_blank(),
+                                panel.grid.major.x = element_blank(),
+                                panel.grid.major.y = element_line(linetype = "dashed"),
+                                panel.grid.minor.y = element_blank(),
+                                panel.grid.minor.x = element_blank(),
                                 plot.title = element_text(size = 12, face = "bold"),
-                                plot.margin = if(rv_line$highlight_legend) {margin(0.25, 3, 1, 0.25, "cm")} else {margin(0.25, 0.25, 1, 0.25, "cm")},
+                                plot.margin = margin(0.25, 3, 1, 0.25, "cm"),
                                 plot.caption = element_text(hjust = 0, size = 10),
                                 axis.ticks.x = element_blank(),
                                 axis.ticks.y = element_blank(),
                                 axis.text.x = element_text(colour = "black"),
                                 axis.text.y = element_text(colour = "black"),
                                 text = element_text(size = 12,  family = rv_line$font),
-                                legend.key = element_rect(fill = "white"),
-                                legend.title = element_blank())
+                                legend.position = "none"
+                                )
         
                 # Include data labels
                 if(rv_line$data_labels){p <- p +
@@ -7263,7 +7384,10 @@ server <- function(input, output, session) {
                                 vjust = ifelse(table$Value <0 , 1.5, -0.5),
                                 hjust = 0.5,
                                 size = 3,
-                                family = rv_line$font, na.rm = TRUE)
+                                family = rv_line$font, 
+                                na.rm = TRUE,
+                                inherit.aes = FALSE
+                                )
                 }
         
                 # Include legend
@@ -7287,9 +7411,9 @@ server <- function(input, output, session) {
         
                 size_factor <- 0.08
                 ALPHA <- 0.15
-        
+
                 # Subperiod rectangles, their labels and the dotted lines separating
-                if(rv_input$time_subper & rv_line$time_subper & !all(is.na(table$Value))){
+                if(rv_input$time_subper & rv_line$time_subper ){
                         p <- p +
                                 geom_rect(data = rectangle_text,
                                         aes(NULL, NULL, xmin = my_min_fun(Year_start), xmax = my_max_fun(Year_end)),
@@ -7297,7 +7421,8 @@ server <- function(input, output, session) {
                                         ymax = y_max_new,
                                         colour = NA,
                                         fill = "grey",
-                                        alpha = 0.5)+
+                                        alpha = 0.5,
+                                        inherit.aes = FALSE)+
                                 geom_label(data = rectangle_text,
                                         aes(x = Year_start + (Year_end - Year_start)/2,
                                                 y = y_max_new * ALPHA + (y_max_new - y_range_new * size_factor)*(1 - ALPHA),
@@ -7309,7 +7434,8 @@ server <- function(input, output, session) {
                                         alpha = 0,
                                         label.size = NA,
                                         hjust = "center",
-                                        vjust = "bottom")
+                                        vjust = "bottom",
+                                        inherit.aes = FALSE)
         
                         for (i in vertical_lines) {
                                 p <- p + geom_segment(x = i,
@@ -7438,11 +7564,26 @@ server <- function(input, output, session) {
         
                                 # Increase intervals in X axis in small plots
                                 intervals <- ifelse(max(rv_line$time_range) - min(rv_line$time_range) < 30, 2, 4)
-                                rv_plots$line[[i]] <- rv_plots$line[[i]] +
-                                        scale_x_continuous(name = "",
-                                                breaks = seq(min(rv_line$time_range),
-                                                        max(rv_line$time_range),
-                                                        by = intervals))
+                                if(rv_line$ctry_short){
+                                        rv_plots$line[[i]] <- rv_plots$line[[i]] +
+                                                scale_x_continuous(name = "",
+                                                        breaks = seq(min(rv_line$time_range),
+                                                                max(rv_line$time_range),
+                                                                by = intervals),
+                                                        limits=c(min(rv_line$time_range)-0.5, max(rv_line$time_range)+ ceiling((max(rv_line$time_range)-min(rv_line$time_range))*0.15)),
+                                                        expand = c(0, 0)
+                                                )
+                                }else{
+                                        rv_plots$line[[i]] <- rv_plots$line[[i]] +
+                                                scale_x_continuous(name = "",
+                                                        breaks = seq(min(rv_line$time_range),
+                                                                max(rv_line$time_range),
+                                                                by = intervals),
+                                                        limits=c(min(rv_line$time_range)-0.5, max(rv_line$time_range)+ ceiling((max(rv_line$time_range)-min(rv_line$time_range))*0.35)),
+                                                        expand = c(0, 0)
+                                                )
+                                }
+
         
                                 name <- paste("lineplot_small", i, ".png", sep = "")
                                 ggsave(name,
@@ -7872,7 +8013,7 @@ server <- function(input, output, session) {
         #                                         )
         #                                 ),
         #                                 
-        #                                 tags$b("Method of data aggregation by period"),
+        #                                 tags$b("Method of aggregation by period"),
         #                                 
         #                                 fluidRow(
         #                                         column(6,
@@ -8628,10 +8769,11 @@ server <- function(input, output, session) {
         #                         limits = c(x_min, x_max + (x_range * 0.1)))
         #                 
         #                 # Aesthetics
-        #                 p <- p + theme(
-        #                         panel.background = element_blank(),
+        #                 p <- p + theme_minimal() +
+        #                         theme(
         #                         panel.border = element_blank(),
-        #                         panel.grid.major = element_blank(),
+        #                         panel.grid.major.x = element_blank(),
+        #                         panel.grid.major.y = element_line(linetype = "dashed"),
         #                         panel.grid.minor = element_blank(),
         #                         plot.title = element_text(size = 12, face = "bold"),
         #                         plot.margin = margin(0.25, 0.25, 1, 0.25, "cm"),
