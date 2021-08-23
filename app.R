@@ -1128,25 +1128,6 @@ ui <- shinyUI(
                                 }")
                         ),
                         
-                        # noUiSliderInput style
-                        
-                        # tags$head(tags$style(
-                        #         
-                        #         ".noUi-connect {background: #399fff;}
-                        #         .noUi-handle {
-                        #                 top: 25px;
-                        #                 height: 8px;
-                        #                 background: linear-gradient(to bottom, #dedede -50%, white 150%);
-                        #                 background-color: #ededed;
-                        #                 border-radius: 27px; 
-                        #                 border: 1px solid #cccccc; 
-                        #         "
-                        # )),
-                        # 
-                        # tags$style(".noUi-handle:after,
-                        # .noUi-handle:before {display: none !important}"),
-                        
-                        
                 # Navigation bar
                 div(class = "navbar1", 
                 navbarPage(title = "Plot Data Tool",
@@ -1303,73 +1284,8 @@ ui <- shinyUI(
                                                                                 max = 4,
                                                                                 value = def_list_data$time_subper_num),
                                                                         
-                                                                        # Period breaks
-                                                                        # There is no way to change the number of breaks when updating. That is why we
-                                                                        # have to create one slider for each number of subperiods.
-                                                                        conditionalPanel(condition = "input.in_id_time_subper_num == 2",
-                                                                                noUiSliderInput(
-                                                                                        inputId = "in_id_time_limit_1_TEST", 
-                                                                                        label = "Select period breaks",
-                                                                                        min = def_list_data$time_range_start, 
-                                                                                        max = def_list_data$time_range_end,
-                                                                                        range = list(min = def_list_data$time_range_start, max = def_list_data$time_range_end),
-                                                                                        step = 1,
-                                                                                        margin = 1,
-                                                                                        connect = FALSE,
-                                                                                        value = c(def_list_data$time_limit_1),
-                                                                                        padding = c(0, 1),
-                                                                                        update_on = "end",
-                                                                                        format = wNumbFormat((decimals = 0)),
-                                                                                        pips = list(mode = "steps",
-                                                                                                # values = 10,
-                                                                                                stepped = TRUE, 
-                                                                                                density = 3)
-                                                                                )
-                                                                                ),
+                                                                        tags$hr(style="border-color: #99a3a4;"),
                                                                         
-                                                                        conditionalPanel(condition = "input.in_id_time_subper_num == 3",
-                                                                                noUiSliderInput(
-                                                                                        inputId = "in_id_time_limit_2_TEST", 
-                                                                                        label = "Select period breaks",
-                                                                                        min = def_list_data$time_range_start, 
-                                                                                        max = def_list_data$time_range_end,
-                                                                                        range = list(min = def_list_data$time_range_start, max = def_list_data$time_range_end),
-                                                                                        step = 1,
-                                                                                        margin = 1,
-                                                                                        connect = FALSE,
-                                                                                        value = c(def_list_data$time_limit_1, def_list_data$time_limit_2),
-                                                                                        padding = c(0, 1),
-                                                                                        update_on = "end",
-                                                                                        format = wNumbFormat((decimals = 0)),
-                                                                                        pips = list(mode = "steps", 
-                                                                                                # values = 10,
-                                                                                                stepped = TRUE, 
-                                                                                                density = 3)
-                                                                                )
-                                                                        ),
-                                                                        
-                                                                        conditionalPanel(condition = "input.in_id_time_subper_num == 4",
-                                                                                noUiSliderInput(
-                                                                                        inputId = "in_id_time_limit_3_TEST",
-                                                                                        label = "Select period breaks",
-                                                                                        min = def_list_data$time_range_start,
-                                                                                        max = def_list_data$time_range_end,
-                                                                                        range = list(min = def_list_data$time_range_start, max = def_list_data$time_range_end),
-                                                                                        step = 1,
-                                                                                        margin = 1,
-                                                                                        connect = FALSE,
-                                                                                        value = c(def_list_data$time_limit_1, def_list_data$time_limit_2,  def_list_data$time_limit_3),
-                                                                                        padding = c(0, 1),
-                                                                                        update_on = "end",
-                                                                                        format = wNumbFormat((decimals = 0)),
-                                                                                        pips = list(mode = "steps",
-                                                                                                # values = 10,
-                                                                                                stepped = TRUE,
-                                                                                                density = 3)
-                                                                                ),
-                                                                                
-                                                                        ),
-
                                                                         textInput(
                                                                                 inputId = "in_id_time_name_1",
                                                                                 label="Period 1 name",
@@ -1394,6 +1310,8 @@ ui <- shinyUI(
                                                                                 # Subperiod 3's name and the end of period 2 appear only if number of subperiods selected is 3 or 4
                                                                                 condition = "input.in_id_time_subper_num == 3 | input.in_id_time_subper_num == 4",
                                                                                 
+                                                                                tags$hr(style="border-color: #99a3a4;"),
+                                                                                
                                                                                 textInput(inputId = "in_id_time_name_3",
                                                                                         label="Period 3 name",
                                                                                         value = def_list_data$time_name_3),
@@ -1402,8 +1320,8 @@ ui <- shinyUI(
                                                                                         inputId = "in_id_time_limit_2",
                                                                                         label = "Select last year of Period 2",
                                                                                         sep = "",
-                                                                                        min = def_list_data$time_limit_1 + 1,
-                                                                                        max = def_list_data$time_range_end - 1,
+                                                                                        min = def_list_data$time_range_start,
+                                                                                        max = def_list_data$time_range_end,
                                                                                         step = 1,
                                                                                         value = def_list_data$time_limit_2),
                                                                                 
@@ -1414,6 +1332,8 @@ ui <- shinyUI(
                                                                                 # Subperiod 4's name and the end of period 3 appear only if number of subperiods selected is 4
                                                                                 condition = "input.in_id_time_subper_num == 4",
                                                                                 
+                                                                                tags$hr(style="border-color: #99a3a4;"),
+                                                                                
                                                                                 textInput(inputId = "in_id_time_name_4",
                                                                                         label="Period 4 name",
                                                                                         value = def_list_data$time_name_4),
@@ -1422,8 +1342,8 @@ ui <- shinyUI(
                                                                                         inputId = "in_id_time_limit_3",
                                                                                         label = "Select last year of Period 3",
                                                                                         sep = "",
-                                                                                        min = def_list_data$time_limit_2 + 1,
-                                                                                        max = def_list_data$time_range_end - 1,
+                                                                                        min = def_list_data$time_range_start,
+                                                                                        max = def_list_data$time_range_end,
                                                                                         step = 1,
                                                                                         value = def_list_data$time_limit_3)
                                                                                 
@@ -2922,171 +2842,6 @@ server <- function(input, output, session) {
         
         # Update subperiod inputs as range changes
         
-        ###############################################
-
-        rv_time <- reactiveValues(
-
-                time_range_start = def_list_data$time_range_start,
-                time_range_end = def_list_data$time_range_end,
-                time_subper = def_list_data$time_subper,
-                time_subper_num = def_list_data$time_subper_num,
-                time_limit_1 = def_list_data$time_limit_1,
-                time_limit_2 = def_list_data$time_limit_2,
-                time_limit_3 = def_list_data$time_limit_3
-
-        )
-        
-        listen_time <- eventReactive(
-                c(input$in_id_time_range,
-                        input$in_id_time_subper_num),{
-                                
-                                no_changes_vec <- c(
-                                        setequal(rv_time$time_range, input$in_id_time_range),
-                                        setequal(rv_time$time_subper_num, input$in_id_time_subper_num))
-                                
-                                return(!all(no_changes_vec))
-                        
-        })
-        
-        observeEvent(listen_time(),{
-                
-                x1 <- rv_time$time_limit_1
-                x2 <- rv_time$time_limit_2
-                x3 <- rv_time$time_limit_3
-                
-                if(listen_time()){
-                        rv_time$time_range_start <- input$in_id_time_range[1]
-                        rv_time$time_range_end <- input$in_id_time_range[2]
-                        rv_time$time_limit_1 <- max(x1, input$in_id_time_range[1])
-                        rv_time$time_limit_2 <- min(max(x2, input$in_id_time_range[1]), input$in_id_time_range[2])
-                        rv_time$time_limit_3 <- max(x3, input$in_id_time_range[2])
-                }
-                
-        }, ignoreInit = TRUE)
-        
-        observeEvent(input$in_id_time_range,{
-                
-                # if(input$in_id_time_subper_num==2){
-                        updateNoUiSliderInput(
-                                session = session,
-                                inputId = "in_id_time_limit_1_TEST",
-                                value = c(2010),
-                                range = c(input$in_id_time_range[1], input$in_id_time_range[2]),
-                                disable = FALSE
-                        )
-                # }
-                
-                # if(input$in_id_time_subper_num==3){
-                        updateNoUiSliderInput(
-                                session = session,
-                                inputId = "in_id_time_limit_2_TEST",
-                                value = c(2010, 2016),
-                                range = c(input$in_id_time_range[1], input$in_id_time_range[2]),
-                                disable = FALSE
-                        )
-                # }
-                
-                # if(input$in_id_time_subper_num==4){
-                        updateNoUiSliderInput(
-                                session = session,
-                                inputId = "in_id_time_limit_3_TEST",
-                                value = c(2010, 2016, 2018),
-                                range = c(input$in_id_time_range[1], input$in_id_time_range[2]),
-                                disable = FALSE
-                        )
-                # }
-
-                
-        })
-        
-        
-        
-        observeEvent(input$in_id_time_subper_num,{
-                
-                # Problem: the number of elements in the value vector can't be updated.
-                
-                values_aux <- c(rv_time$time_limit_1, rv_time$time_limit_2, rv_time$time_limit_2)[1:input$in_id_time_subper_num]
-                
-                updateNoUiSliderInput(
-                        session = session,
-                        inputId = "in_id_time_limit_1_TEST",
-                        value = values_aux,
-                        range = c(input$in_id_time_range[1], input$in_id_time_range[2]),
-                        disable = FALSE
-                )
-                
-        })
-
-        # observeEvent(c(input$in_id_time_range[1],
-        #         input$in_id_time_range[2],
-        #         input$in_id_time_subper_num),{
-        #                 
-        #                 print("Data - Inputs [1/5]: Subperiod limits (observeEvent)")
-        # 
-        #                 
-        #                 if(!input$in_id_time_subper){return()}
-        #                 
-        #                 if(input$in_id_time_subper_num == 2){
-        # 
-        #                         MYupdateNoUiSliderInput(
-        #                                 session = session,
-        #                                 inputId = "in_id_time_limit_1_TEST",
-        #                                 value = c(rv_time$time_limit_1),
-        #                                 min = rv_time$time_range_start,
-        #                                 max = rv_time$time_range_end,
-        #                                 disable = FALSE
-        #                         )
-        #                         
-        #                         
-        #                 }
-        #                 
-        #                 if(input$in_id_time_subper_num == 3){
-        # 
-        #                         MYupdateNoUiSliderInput(
-        #                                 session = session,
-        #                                 inputId = "in_id_time_limit_1_TEST",
-        #                                 value = c(rv_time$time_limit_1, rv_time$time_limit_2),
-        #                                 min = rv_time$time_range_start,
-        #                                 max = rv_time$time_range_end,
-        #                                 disable = FALSE
-        #                         )
-        #                 }
-        #                 
-        #                 if(input$in_id_time_subper_num == 4){
-        # 
-        #                         MYupdateNoUiSliderInput(
-        #                                 session = session,
-        #                                 inputId = "in_id_time_limit_1_TEST",
-        #                                 value = c(rv_time$time_limit_1, rv_time$time_limit_2, rv_time$time_limit_3),
-        #                                 min = rv_time$time_range_start,
-        #                                 max = rv_time$time_range_end,
-        #                                 disable = FALSE
-        #                         )
-        #                 }
-        #                 
-        #                 
-        # 
-        #                 
-        # 
-        #                 
-        #                 
-        #         
-        # })
-        # 
-        # observe({
-        #         print("outputtttttttttttttttttttttt")
-        #         
-        #         print(str(input$in_id_time_limit_1_TEST))
-        # })
-        
-
-
-        
-        
-        
-        
-        ###############################################
-                
         observeEvent(input$in_id_time_range, {
                 
                 print("Data - Inputs [1/5]: Number of subperiods (observeEvent)")
@@ -3101,47 +2856,155 @@ server <- function(input, output, session) {
         })
         
         observeEvent(c(input$in_id_time_range,
-                input$in_id_time_subper,
-                input$in_id_time_subper_num,
-                input$in_id_time_limit_1,
-                input$in_id_time_limit_2,
-                input$in_id_time_limit_3
+                input$in_id_time_subper_num
+                # input$in_id_time_limit_1,
+                # input$in_id_time_limit_2,
+                # input$in_id_time_limit_3
                 ), {
                         
                 print("Data - Inputs [1/5]: Subperiod limits (observeEvent)")
                 
-                if(input$in_id_time_subper_num >= 3){
-                        max_lim_1 <- input$in_id_time_limit_2 - 1 
-                } else {max_lim_1 <- input$in_id_time_range[2] - 1}
+                if(input$in_id_time_subper_num == 2){
                         
+                        slider1limit_max <- input$in_id_time_range[2] - 1
+                        slider1limit_min <- input$in_id_time_range[1]
+                        
+                        value1 <- max(min(slider1limit_max, input$in_id_time_limit_1), slider1limit_min)
+                        
+                }
+                        
+                if(input$in_id_time_subper_num == 3){
+                        
+                        slider1limit_max <- input$in_id_time_limit_2 - 1
+                        slider1limit_min <- input$in_id_time_range[1]
+                        
+                        slider2limit_max <- input$in_id_time_range[2] - 1
+                        slider2limit_min <- input$in_id_time_limit_1 + 1
+                        
+                        value1 <- max(min(slider1limit_max, input$in_id_time_limit_1), slider1limit_min)
+                        value2 <- max(min(slider2limit_max, input$in_id_time_limit_2), slider2limit_min)
+                        
+                }        
+                                
+                if(input$in_id_time_subper_num == 4){
+                        
+                        slider1limit_max <- input$in_id_time_limit_2 - 1
+                        slider1limit_min <- input$in_id_time_range[1]
+                        
+                        slider2limit_max <- input$in_id_time_limit_3 - 1
+                        slider2limit_min <- input$in_id_time_limit_1 + 1
+                        
+                        slider3limit_max <- input$in_id_time_range[2] - 1
+                        slider3limit_min <- input$in_id_time_limit_2 + 1
+                        
+                        value1 <- max(min(slider1limit_max, input$in_id_time_limit_1), slider1limit_min)
+                        value2 <- max(min(slider2limit_max, input$in_id_time_limit_2), slider2limit_min)
+                        value3 <- max(min(slider3limit_max, input$in_id_time_limit_3), slider3limit_min)
+                        
+                }
+                
+                if(input$in_id_time_subper_num >= 2){        
+                        updateSliderInput(
+                                session = session,
+                                inputId = "in_id_time_limit_1",
+                                min = input$in_id_time_range[1],
+                                max = input$in_id_time_range[2],
+                                step = 1,
+                                value = value1)
+                }
+                
+                if(input$in_id_time_subper_num >= 3){
+                        updateSliderInput(
+                                session = session,
+                                inputId = "in_id_time_limit_2",
+                                min = input$in_id_time_range[1],
+                                max = input$in_id_time_range[2],
+                                step = 1,
+                                value = value2)
+                        }
+                
+                if(input$in_id_time_subper_num == 4){
+                        updateSliderInput(
+                                session = session,
+                                inputId = "in_id_time_limit_3",
+                                min = input$in_id_time_range[1],
+                                max = input$in_id_time_range[2],
+                                step = 1,
+                                value = value3)
+                }      
+
+        
+        })
+        
+        observeEvent(input$in_id_time_limit_1, {
+                
+                if(input$in_id_time_subper_num == 2){
+                        slider1limit_max <- input$in_id_time_range[2] - 1
+                        slider1limit_min <- input$in_id_time_range[1]
+                }
+                
+                if(input$in_id_time_subper_num >= 3){
+                        
+                        slider1limit_max <- input$in_id_time_limit_2 - 1
+                        slider1limit_min <- input$in_id_time_range[1]
+                        
+                }
+                
+                
+                value1 <- max(min(slider1limit_max, input$in_id_time_limit_1), slider1limit_min)
+                
                 updateSliderInput(
                         session = session,
                         inputId = "in_id_time_limit_1",
                         min = input$in_id_time_range[1],
-                        max = max_lim_1,
+                        max = input$in_id_time_range[2],
                         step = 1,
-                        value = input$in_id_time_limit_1)
+                        value = value1)
+                
+        })
+        
+        observeEvent(input$in_id_time_limit_2, {
+                
+                if(input$in_id_time_subper_num == 3){
+                        
+                        slider2limit_max <- input$in_id_time_range[2] - 1
+                        slider2limit_min <- input$in_id_time_limit_1 + 1
+
+                }        
                 
                 if(input$in_id_time_subper_num == 4){
-                        max_lim_2 <- input$in_id_time_limit_3 - 1
-                } else {max_lim_2 <- input$in_id_time_range[2] - 1}
-                                
+                        
+                        slider2limit_max <- input$in_id_time_limit_3 - 1
+                        slider2limit_min <- input$in_id_time_limit_1 + 1
+  
+                }
+                
+                value2 <- max(min(slider2limit_max, input$in_id_time_limit_2), slider2limit_min)
+                
                 updateSliderInput(
                         session = session,
                         inputId = "in_id_time_limit_2",
-                        min = input$in_id_time_limit_1 + 1,
-                        max = max_lim_2,
+                        min = input$in_id_time_range[1],
+                        max = input$in_id_time_range[2],
                         step = 1,
-                        value = input$in_id_time_limit_2)
+                        value = value2)
+                
+        })
+        
+        observeEvent(input$in_id_time_limit_3, {
+                
+                slider3limit_max <- input$in_id_time_range[2] - 1
+                slider3limit_min <- input$in_id_time_limit_2 + 1
+                value3 <- max(min(slider3limit_max, input$in_id_time_limit_3), slider3limit_min)
                 
                 updateSliderInput(
                         session = session,
                         inputId = "in_id_time_limit_3",
-                        min = input$in_id_time_limit_2 + 1,
-                        max = input$in_id_time_range[2] - 1,
+                        min = input$in_id_time_range[1],
+                        max = input$in_id_time_range[2],
                         step = 1,
-                        value = input$in_id_time_limit_3)
-        
+                        value = value3)
+                
         })
         
         # Update WDI variables
