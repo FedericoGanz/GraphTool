@@ -1,4 +1,3 @@
-# global.r ----
 
 ## Load libraries ----
 
@@ -7,6 +6,7 @@ library(shinyjs)
 library(shinythemes)
 library(shinyWidgets)
 library(shinycssloaders)
+library(shinySearchbar)
 library(dipsaus)
 library(WDI)
 library(dplyr)
@@ -35,18 +35,34 @@ library(ggh4x)
 library(forcats)
 library(lattice)
 library(zoo)
+library(rasterVis)
+library(stringr)
+library(conflicted)
+library(vctrs)
+library(bslib)
+
+# Load slider function
+source("MYsliderInput_script_simple.R")
 
 print("*******************************")
 print("**RUNNING CODE OUTSIDE SERVER**")
 print("*******************************")
 cat("\n")
 
+# Solve conflicts
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+conflict_prefer("dataTableOutput", "DT")
+conflict_prefer("renderDataTable", "DT")
+conflict_prefer("levelplot", "rasterVis")
+conflict_prefer("zip", "zip")
+
 ## Fix variables ----
 
 # Load dataframes from WDI package to get countries
 ctry_df <- as.data.frame(WDI_data$country)
 ctry_vec <- sort(ctry_df[ctry_df[ , "region"] != "Aggregates", "country"])
-reg_vec <<- sort(ctry_df[ctry_df[ , "region"] == "Aggregates", "country"])
+reg_vec <- sort(ctry_df[ctry_df[ , "region"] == "Aggregates", "country"])
 
 # Create dataframe with flags
 flags_df <- filter(ctry_df, !region %in% c("Aggregates")) %>% select(country, iso2c, iso3c)
@@ -672,7 +688,6 @@ subper_rectangles_fun <- function(
         return(list(rect = rectangle_text, vert = vertical_lines))
 }
 
-        
 # Default data input parameters
 def_list_data <- list(
         # Pakistan
@@ -1063,6 +1078,15 @@ cat("\n")
 cat("\n")
 
 
+# jsc <- '
+# $(document).ready(function () {
+#   $(".sidebar-menu").children("li").on("click", function() {
+#     $("#mult, #single").toggle();
+#   });
+# });
+# '
+
+
 # ui.r ----
 
 ui <- shinyUI(
@@ -1079,23 +1103,69 @@ ui <- shinyUI(
                 # Theme
                 theme = shinytheme("cerulean"),
                         
-                # Navegation bar rounded borders style
-                tags$style(HTML(".navbar {border-radius: 5px}")),                
-                
-                # Header
-                titlePanel("Download & Plot Data Tool"),
-                
+                        # Navigation bar style
+                        tags$style(HTML("
+                        
+                                .navbar1 .navbar{
+                                height: 70px;
+                                line-height: 70px;
+                                }
+                                .navbar1 .navbar-brand{
+                                width: 200px !important;
+                                line-height: 35px
+                                }
+                                .navbar1 .navbar a{
+                                text-align: center;
+                                width: 160px;
+                                height: 70px;
+                                line-height: 35px
+                                }
+                                .navbar1 .dropdown-menu>li>a{
+                                text-align: left;
+                                width: 160px;
+                                height: 30px;
+                                line-height:15px
+                                }")
+                        ),
+                        
+                        # noUiSliderInput style
+                        
+                        # tags$head(tags$style(
+                        #         
+                        #         ".noUi-connect {background: #399fff;}
+                        #         .noUi-handle {
+                        #                 top: 25px;
+                        #                 height: 8px;
+                        #                 background: linear-gradient(to bottom, #dedede -50%, white 150%);
+                        #                 background-color: #ededed;
+                        #                 border-radius: 27px; 
+                        #                 border: 1px solid #cccccc; 
+                        #         "
+                        # )),
+                        # 
+                        # tags$style(".noUi-handle:after,
+                        # .noUi-handle:before {display: none !important}"),
+                        
+                        
                 # Navigation bar
-                navbarPage(title = NULL,
+                div(class = "navbar1", 
+                navbarPage(title = "Plot Data Tool",
+                        position = "fixed-top",
                         
                         # tabPanel(title = "About",
                         #         
                         #         
                         # 
                         # ),
-                        
+
                         tabPanel(title = "Data",
                                 
+                                br(),
+                                br(),
+                                br(),
+                                br(),
+                                br(),
+
                                 sidebarLayout(
                                 
                                         sidebarPanel(title = "Data inputs",
@@ -1225,6 +1295,7 @@ ui <- shinyUI(
                                                                         
                                                                         # Number of subperiods only appears if subperiods switch is on
                                                                         condition = "input.in_id_time_subper == true",
+                                                                        
                                                                         numericInput(
                                                                                 inputId = "in_id_time_subper_num",
                                                                                 label = "Number of subperiods (min=2; max=4)",
@@ -1232,6 +1303,73 @@ ui <- shinyUI(
                                                                                 max = 4,
                                                                                 value = def_list_data$time_subper_num),
                                                                         
+                                                                        # Period breaks
+                                                                        # There is no way to change the number of breaks when updating. That is why we
+                                                                        # have to create one slider for each number of subperiods.
+                                                                        conditionalPanel(condition = "input.in_id_time_subper_num == 2",
+                                                                                noUiSliderInput(
+                                                                                        inputId = "in_id_time_limit_1_TEST", 
+                                                                                        label = "Select period breaks",
+                                                                                        min = def_list_data$time_range_start, 
+                                                                                        max = def_list_data$time_range_end,
+                                                                                        range = list(min = def_list_data$time_range_start, max = def_list_data$time_range_end),
+                                                                                        step = 1,
+                                                                                        margin = 1,
+                                                                                        connect = FALSE,
+                                                                                        value = c(def_list_data$time_limit_1),
+                                                                                        padding = c(0, 1),
+                                                                                        update_on = "end",
+                                                                                        format = wNumbFormat((decimals = 0)),
+                                                                                        pips = list(mode = "steps",
+                                                                                                # values = 10,
+                                                                                                stepped = TRUE, 
+                                                                                                density = 3)
+                                                                                )
+                                                                                ),
+                                                                        
+                                                                        conditionalPanel(condition = "input.in_id_time_subper_num == 3",
+                                                                                noUiSliderInput(
+                                                                                        inputId = "in_id_time_limit_2_TEST", 
+                                                                                        label = "Select period breaks",
+                                                                                        min = def_list_data$time_range_start, 
+                                                                                        max = def_list_data$time_range_end,
+                                                                                        range = list(min = def_list_data$time_range_start, max = def_list_data$time_range_end),
+                                                                                        step = 1,
+                                                                                        margin = 1,
+                                                                                        connect = FALSE,
+                                                                                        value = c(def_list_data$time_limit_1, def_list_data$time_limit_2),
+                                                                                        padding = c(0, 1),
+                                                                                        update_on = "end",
+                                                                                        format = wNumbFormat((decimals = 0)),
+                                                                                        pips = list(mode = "steps", 
+                                                                                                # values = 10,
+                                                                                                stepped = TRUE, 
+                                                                                                density = 3)
+                                                                                )
+                                                                        ),
+                                                                        
+                                                                        conditionalPanel(condition = "input.in_id_time_subper_num == 4",
+                                                                                noUiSliderInput(
+                                                                                        inputId = "in_id_time_limit_3_TEST",
+                                                                                        label = "Select period breaks",
+                                                                                        min = def_list_data$time_range_start,
+                                                                                        max = def_list_data$time_range_end,
+                                                                                        range = list(min = def_list_data$time_range_start, max = def_list_data$time_range_end),
+                                                                                        step = 1,
+                                                                                        margin = 1,
+                                                                                        connect = FALSE,
+                                                                                        value = c(def_list_data$time_limit_1, def_list_data$time_limit_2,  def_list_data$time_limit_3),
+                                                                                        padding = c(0, 1),
+                                                                                        update_on = "end",
+                                                                                        format = wNumbFormat((decimals = 0)),
+                                                                                        pips = list(mode = "steps",
+                                                                                                # values = 10,
+                                                                                                stepped = TRUE,
+                                                                                                density = 3)
+                                                                                ),
+                                                                                
+                                                                        ),
+
                                                                         textInput(
                                                                                 inputId = "in_id_time_name_1",
                                                                                 label="Period 1 name",
@@ -1260,7 +1398,6 @@ ui <- shinyUI(
                                                                                         label="Period 3 name",
                                                                                         value = def_list_data$time_name_3),
                                                                                 
-                                                                                
                                                                                 sliderInput(
                                                                                         inputId = "in_id_time_limit_2",
                                                                                         label = "Select last year of Period 2",
@@ -1268,7 +1405,7 @@ ui <- shinyUI(
                                                                                         min = def_list_data$time_limit_1 + 1,
                                                                                         max = def_list_data$time_range_end - 1,
                                                                                         step = 1,
-                                                                                        value = def_list_data$time_limit_2)
+                                                                                        value = def_list_data$time_limit_2),
                                                                                 
                                                                         ),
                                                                         
@@ -1375,10 +1512,14 @@ ui <- shinyUI(
                                                                 tags$br(),
                                                                 
                                                                 uiOutput("out_summary_title"),
-                                                                htmlOutput("out_summary"),
+                                                                htmlOutput("out_summary")%>% withSpinner(type = 3, 
+                                                                        color = def_list_data$col_spinner, 
+                                                                        color.background = "white"),
                                                                 
                                                                 uiOutput("out_summary_missing_title"),
-                                                                plotOutput("out_summary_missing")
+                                                                plotOutput("out_summary_missing")%>% withSpinner(type = 3, 
+                                                                        color = def_list_data$col_spinner, 
+                                                                        color.background = "white")
                                                         
                                                         ),
                                                         
@@ -1407,6 +1548,12 @@ ui <- shinyUI(
                         navbarMenu(title = "Bar plots",
         
                                 tabPanel(title = "Single Country",
+                                        
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
                                         
                                         sidebarLayout(
                                                 
@@ -1612,6 +1759,12 @@ ui <- shinyUI(
                                 ),
         
                                 tabPanel(title = "Multiple Countries",
+                                        
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
                                         
                                         sidebarLayout(
                                                 
@@ -1838,6 +1991,12 @@ ui <- shinyUI(
                                 
                                 tabPanel(title = "Single Country",
                                         
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        
                                         sidebarLayout(
                                                 
                                                 sidebarPanel(
@@ -2038,6 +2197,12 @@ ui <- shinyUI(
                                 ),
                                 
                                 tabPanel(title = "Multiple Countries",
+                                        
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
                                         
                                         sidebarLayout(
                                                 
@@ -2246,6 +2411,12 @@ ui <- shinyUI(
                         ),
                         
                         tabPanel(title = "Line plots",
+                                
+                                br(),
+                                br(),
+                                br(),
+                                br(),
+                                br(),
                                 
                                 sidebarLayout(
                                         
@@ -2470,6 +2641,12 @@ ui <- shinyUI(
                         
                         tabPanel(title = "Scatter plots",
                                 
+                                br(),
+                                br(),
+                                br(),
+                                br(),
+                                br(),
+                                
                                 sidebarLayout(
                                         
                                         sidebarPanel(width = 6,
@@ -2681,7 +2858,7 @@ ui <- shinyUI(
                                         )
                                 )
                         )
-                ),
+                )),
 
                 # Footer
                 hr(),
@@ -2744,6 +2921,172 @@ server <- function(input, output, session) {
         
         
         # Update subperiod inputs as range changes
+        
+        ###############################################
+
+        rv_time <- reactiveValues(
+
+                time_range_start = def_list_data$time_range_start,
+                time_range_end = def_list_data$time_range_end,
+                time_subper = def_list_data$time_subper,
+                time_subper_num = def_list_data$time_subper_num,
+                time_limit_1 = def_list_data$time_limit_1,
+                time_limit_2 = def_list_data$time_limit_2,
+                time_limit_3 = def_list_data$time_limit_3
+
+        )
+        
+        listen_time <- eventReactive(
+                c(input$in_id_time_range,
+                        input$in_id_time_subper_num),{
+                                
+                                no_changes_vec <- c(
+                                        setequal(rv_time$time_range, input$in_id_time_range),
+                                        setequal(rv_time$time_subper_num, input$in_id_time_subper_num))
+                                
+                                return(!all(no_changes_vec))
+                        
+        })
+        
+        observeEvent(listen_time(),{
+                
+                x1 <- rv_time$time_limit_1
+                x2 <- rv_time$time_limit_2
+                x3 <- rv_time$time_limit_3
+                
+                if(listen_time()){
+                        rv_time$time_range_start <- input$in_id_time_range[1]
+                        rv_time$time_range_end <- input$in_id_time_range[2]
+                        rv_time$time_limit_1 <- max(x1, input$in_id_time_range[1])
+                        rv_time$time_limit_2 <- min(max(x2, input$in_id_time_range[1]), input$in_id_time_range[2])
+                        rv_time$time_limit_3 <- max(x3, input$in_id_time_range[2])
+                }
+                
+        }, ignoreInit = TRUE)
+        
+        observeEvent(input$in_id_time_range,{
+                
+                # if(input$in_id_time_subper_num==2){
+                        updateNoUiSliderInput(
+                                session = session,
+                                inputId = "in_id_time_limit_1_TEST",
+                                value = c(2010),
+                                range = c(input$in_id_time_range[1], input$in_id_time_range[2]),
+                                disable = FALSE
+                        )
+                # }
+                
+                # if(input$in_id_time_subper_num==3){
+                        updateNoUiSliderInput(
+                                session = session,
+                                inputId = "in_id_time_limit_2_TEST",
+                                value = c(2010, 2016),
+                                range = c(input$in_id_time_range[1], input$in_id_time_range[2]),
+                                disable = FALSE
+                        )
+                # }
+                
+                # if(input$in_id_time_subper_num==4){
+                        updateNoUiSliderInput(
+                                session = session,
+                                inputId = "in_id_time_limit_3_TEST",
+                                value = c(2010, 2016, 2018),
+                                range = c(input$in_id_time_range[1], input$in_id_time_range[2]),
+                                disable = FALSE
+                        )
+                # }
+
+                
+        })
+        
+        
+        
+        observeEvent(input$in_id_time_subper_num,{
+                
+                # Problem: the number of elements in the value vector can't be updated.
+                
+                values_aux <- c(rv_time$time_limit_1, rv_time$time_limit_2, rv_time$time_limit_2)[1:input$in_id_time_subper_num]
+                
+                updateNoUiSliderInput(
+                        session = session,
+                        inputId = "in_id_time_limit_1_TEST",
+                        value = values_aux,
+                        range = c(input$in_id_time_range[1], input$in_id_time_range[2]),
+                        disable = FALSE
+                )
+                
+        })
+
+        # observeEvent(c(input$in_id_time_range[1],
+        #         input$in_id_time_range[2],
+        #         input$in_id_time_subper_num),{
+        #                 
+        #                 print("Data - Inputs [1/5]: Subperiod limits (observeEvent)")
+        # 
+        #                 
+        #                 if(!input$in_id_time_subper){return()}
+        #                 
+        #                 if(input$in_id_time_subper_num == 2){
+        # 
+        #                         MYupdateNoUiSliderInput(
+        #                                 session = session,
+        #                                 inputId = "in_id_time_limit_1_TEST",
+        #                                 value = c(rv_time$time_limit_1),
+        #                                 min = rv_time$time_range_start,
+        #                                 max = rv_time$time_range_end,
+        #                                 disable = FALSE
+        #                         )
+        #                         
+        #                         
+        #                 }
+        #                 
+        #                 if(input$in_id_time_subper_num == 3){
+        # 
+        #                         MYupdateNoUiSliderInput(
+        #                                 session = session,
+        #                                 inputId = "in_id_time_limit_1_TEST",
+        #                                 value = c(rv_time$time_limit_1, rv_time$time_limit_2),
+        #                                 min = rv_time$time_range_start,
+        #                                 max = rv_time$time_range_end,
+        #                                 disable = FALSE
+        #                         )
+        #                 }
+        #                 
+        #                 if(input$in_id_time_subper_num == 4){
+        # 
+        #                         MYupdateNoUiSliderInput(
+        #                                 session = session,
+        #                                 inputId = "in_id_time_limit_1_TEST",
+        #                                 value = c(rv_time$time_limit_1, rv_time$time_limit_2, rv_time$time_limit_3),
+        #                                 min = rv_time$time_range_start,
+        #                                 max = rv_time$time_range_end,
+        #                                 disable = FALSE
+        #                         )
+        #                 }
+        #                 
+        #                 
+        # 
+        #                 
+        # 
+        #                 
+        #                 
+        #         
+        # })
+        # 
+        # observe({
+        #         print("outputtttttttttttttttttttttt")
+        #         
+        #         print(str(input$in_id_time_limit_1_TEST))
+        # })
+        
+
+
+        
+        
+        
+        
+        ###############################################
+                
         observeEvent(input$in_id_time_range, {
                 
                 print("Data - Inputs [1/5]: Number of subperiods (observeEvent)")
@@ -3918,8 +4261,13 @@ server <- function(input, output, session) {
                 # Print summary
                 return(
                         
-                        print(dfSummary(aux), headings = FALSE, method = 'render', bootstrap.css = FALSE,
-                                graph.magnif = 0.75, valid.col = FALSE, style = "grid")
+                        print(dfSummary(aux), 
+                                headings = FALSE, 
+                                method = 'render', 
+                                bootstrap.css = FALSE,
+                                graph.magnif = 0.75, 
+                                valid.col = FALSE, 
+                                style = "grid")
                         
                 )
 
@@ -3960,36 +4308,45 @@ server <- function(input, output, session) {
                 }
                 
                 dimnames(testing.NA) <- list(
-                        names(aux)[3:length(names(aux))],
+                        str_wrap(names(aux)[3:length(names(aux))], width = 20),
+                        # names(aux)[3:length(names(aux))],
                         sort(unique(aux$Year)))
                 
                 testing.NA <- t(testing.NA)
-                my.at <- seq(from = 0, to = 100, by = 10)
-                myColorkey <- list(at=my.at, 
-                        labels=list(at=my.at, labels=my.at), 
-                        space="bottom", 
-                        title = list(label = "Percentage of missing values", cex=1)
-                        )
-                lattice.options(axis.padding=list(factor=0.5))
-                cols <- brewer.pal(10, "RdYlGn")
+                testing.NA <- testing.NA[ , ncol(testing.NA):1] # Change order of variable so that they appear alphabetically from A to Z
+
+                my.theme <- rasterTheme(region=rev(brewer.pal(10,'RdYlGn')))
+
+                my.theme.2 <- rev(brewer.pal(10, "RdYlGn"))
                 
-                p <- levelplot(testing.NA,
+                my.at <- seq(0, 100, by=length(my.theme.2))
+                my.ckey <- list(at=my.at, 
+                        col=my.theme.2,
+                        space="bottom",
+                        title = list(label = "Percentage of missing values", cex=1),
+                        labels=list(at=my.at, labels=my.at)
+                        )
+                
+                lattice.options(axis.padding=list(factor=0.5)) # Eliminate outside border
+                
+                p <- levelplot(testing.NA, 
                         scales=list(x=list(rot=90), 
-                                y=list(function(x) str_wrap(x, width = 15)), tck = c(0,0)),
+                                tck = c(0,0)),
                         main = NULL,
                         xlab = NULL,
                         ylab = NULL,
+                        axis.padding = 0.5,
                         border = "black",
-                        colorkey = myColorkey,
-                        col.regions = rev(cols))
-                
-                p$legend$bottom$args$draw <- TRUE
+                        aspect="fill",
+                        par.settings=my.theme,
+                        at=my.at, 
+                        colorkey=my.ckey)
 
                 print("Summary - plot: end renderUI")
                 print("****************************")
                 cat("\n")
                 
-                return(p)
+                p
         })
         
         ### Render country table ----      
@@ -5012,6 +5369,7 @@ server <- function(input, output, session) {
                 }
 
                 if(rv_mult$stat == "Most recent value"){
+                        table <- table[!is.na(table$Value), ]
                         table <- table %>%
                                 group_by(Country, Period) %>%
                                 mutate(sum_value = Value[which.max(Year)]) %>%
@@ -6530,6 +6888,7 @@ server <- function(input, output, session) {
                 }
                 
                 if(rv_stam$stat == "Most recent value"){
+                        table <- table[!is.na(table$Value), ]
                         table <- table %>%
                                 group_by(Country, Period, Var_name) %>%
                                 mutate(sum_value = Value[which.max(Year)]) %>%
@@ -7254,8 +7613,9 @@ server <- function(input, output, session) {
                                 mutate(label = if_else(Year == max(Year), as.character(Country_aux), NA_character_))
 
                         p <- ggplot(data = table, aes(x = Year, y = Value, group = Country_aux, color = Country_aux)) +
-                                geom_line() +
-                                geom_point()
+                                geom_point() +
+                                geom_line(data = table[!is.na(table$Value),])
+                                
                         
                         # Labels
                         p <- p + geom_text_repel(data = table,
