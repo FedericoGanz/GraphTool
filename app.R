@@ -106,7 +106,7 @@ font_list <- list(Calibri = "Calibri", Arial = "sans", Courier = "mono", TimesNe
 position_list <- list(Top = "top", Bottom = "bottom", Right = "right", Left = "left")
 
 # Statistics vector
-stats_vec <- c("Average", "Median", "Maximum", "Minimum", "Standard deviation", "Most recent value")
+stats_vec <- c("Average", "Median", "Maximum", "Minimum", "Standard deviation", "Most recent value", "None (raw annual data)")
 
 # Units transformation zeros
 units_zeros <- c("Trillions", "Billions", "Millions", "Thousands")
@@ -829,7 +829,7 @@ def_list_mult <- list(
         time_subper = TRUE,
         transform_zeros = TRUE,
         transform_log = FALSE,
-        ctry_short = TRUE,
+        ctry_short = FALSE,
         digits = 1,
         digits_y = 0,
         font = "Calibri",
@@ -850,7 +850,8 @@ def_list_stas <- list(
         vars = c("Exports of goods and services (% of GDP) | NE.EXP.GNFS.ZS",
                 "Imports of goods and services (% of GDP) | NE.IMP.GNFS.ZS"),
         title_text = "Trade",
-        yaxis_text = "Percent of GDP",     
+        yaxis_text = "Percent of GDP",
+        stacked_100 = FALSE,
 
         # Display parameters
         title = TRUE,
@@ -881,7 +882,8 @@ def_list_stam <- list(
         vars = c("Exports of goods and services (% of GDP) | NE.EXP.GNFS.ZS",
                 "Imports of goods and services (% of GDP) | NE.IMP.GNFS.ZS"),
         title_text = "Trade",
-        yaxis_text = "Percent of GDP",     
+        yaxis_text = "Percent of GDP", 
+        stacked_100 = FALSE,
         
         # Display parameters
         title = TRUE,
@@ -891,7 +893,7 @@ def_list_stam <- list(
         time_subper = TRUE,
         transform_zeros = TRUE,
         transform_log = FALSE,
-        ctry_short = TRUE,
+        ctry_short = FALSE,
         digits = 0,
         digits_y = 0,
         color = "Set2",
@@ -925,6 +927,60 @@ def_list_line <- list(
 
 )
 
+def_list_rnkt <- list(
+        
+        # Plot parameters
+        ctries = c(def_list_data$ctries_ctry, def_list_data$ctries_str , def_list_data$ctries_asp , def_list_data$ctries_reg),
+        vars = c("GDP per capita, PPP (constant 2017 international $) | NY.GDP.PCAP.PP.KD",
+                "Population, total | SP.POP.TOTL",
+                "Exports of goods and services (% of GDP) | NE.EXP.GNFS.ZS",
+                "Imports of goods and services (% of GDP) | NE.IMP.GNFS.ZS"),
+        time_range = c(def_list_data$time_range_start, def_list_data$time_range_end),
+        incomplete = TRUE,
+        descending = TRUE,
+        
+        # Display parameters
+        ctries_disp = c(def_list_data$ctries_ctry, def_list_data$ctries_str , def_list_data$ctries_asp , def_list_data$ctries_reg),
+        title = TRUE,
+        yaxis = TRUE,
+        source = TRUE,
+        time_subper = TRUE,
+        ctry_short = FALSE,
+        font = "Calibri",
+        highlight = FALSE,
+        highlight_ctry = def_list_data$ctries_ctry,
+        highlight_color = "#B02307"
+        
+)
+
+rnks_aux_ctries <- unique(initial_wdi_df$Country)
+
+def_list_rnks <- list(
+        
+        # Plot parameters
+        ctries = rnks_aux_ctries,
+        vars = def_list_data$wdi_vars,
+        stat = stats_vec[1],
+        time_range = c(def_list_data$time_range_start, def_list_data$time_range_end),
+        
+        # Display parameters
+        title = TRUE,
+        yaxis = TRUE,
+        source = TRUE,
+        data_labels = TRUE,
+        horizontal = FALSE,
+        transform_zeros = TRUE,
+        transform_log = FALSE,
+        ctry_short = FALSE,
+        digits = 1,
+        digits_y = 0,
+        font = "Calibri",
+        color = "#EC7063",
+        highlight = TRUE,
+        highlight_ctry = def_list_data$ctries_ctry
+)
+
+
 scat_aux_ctries <- unique(initial_wdi_df$Country)
 # scat_aux_ctries <- scat_aux_ctries[as.logical(!scat_aux_ctries %in% c("South Sudan", "Libya", "Equatorial Guinea", "Iraq"))]
 scat_aux_ctries <- scat_aux_ctries[as.logical(scat_aux_ctries %in% small_country_filter_df$Country)]
@@ -949,7 +1005,7 @@ def_list_scat <- list(
         yaxis = TRUE,
         source = TRUE,
         note = FALSE,
-        transform_zeros = TRUE,
+        transform_zeros = FALSE,
         transform_log = FALSE,
         
         scat_regline = TRUE,
@@ -2307,7 +2363,7 @@ ui <- shinyUI(
                                                                 
                                                                 # Select legend position
                                                                 pickerInput(
-                                                                        inputId = "gr_stas_id_legend_pos",
+                                                                        inputId = "gr_stam_id_legend_pos",
                                                                         label = "Select legends position", 
                                                                         choices = position_list,
                                                                         selected = def_list_stam$legend_pos,
@@ -2558,6 +2614,439 @@ ui <- shinyUI(
                                         )
                                 )
                         ),
+                        
+                        
+                        ##################################################################################
+                        
+                        navbarMenu(title = "Ranking plots",
+                                
+                                tabPanel(title = "Across Time",
+                                        
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        
+                                        sidebarLayout(
+                                                
+                                                sidebarPanel(
+                                                        
+                                                        actionButtonStyled(
+                                                                inputId = "gr_rnkt_id_update",
+                                                                label = "Update plots",
+                                                                icon = NULL,
+                                                                width = NULL,
+                                                                btn_type = "btn-sm",
+                                                                type = "success"),
+                                                        
+                                                        tags$br(),
+                                                        tags$p(),
+                                                        
+                                                        wellPanel(
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                h4("Plot parameters"),
+                                                                
+                                                                # Select countries/aggregates
+                                                                pickerInput(
+                                                                        inputId = "gr_rnkt_id_ctries",
+                                                                        label = "Select countries/aggregates (defines ranking)", 
+                                                                        choices = c(""),
+                                                                        options = list(size = 15,
+                                                                                `actions-box` = TRUE),
+                                                                        multiple = TRUE
+                                                                ),
+                                                                
+                                                                # Select variables
+                                                                pickerInput(
+                                                                        inputId = "gr_rnkt_id_vars",
+                                                                        label = "Select variables", 
+                                                                        choices = c(""),
+                                                                        options = list(size = 15,
+                                                                                `actions-box` = TRUE),
+                                                                        multiple = TRUE
+                                                                ),
+                                                                
+                                                                # Select range
+                                                                sliderInput(
+                                                                        inputId = "gr_rnkt_id_time_range",
+                                                                        label = "Select range",
+                                                                        sep = "",
+                                                                        min = def_list_rnkt$time_range[1],
+                                                                        max = def_list_rnkt$time_range[2],
+                                                                        step = 1,
+                                                                        value = c(def_list_rnkt$time_range[1], def_list_rnkt$time_range[2])
+                                                                ),
+                                                                
+                                                                # Include data labels
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnkt_id_incomplete",
+                                                                        label = "Exclude countries with incomplete data for the selected period",
+                                                                        value = def_list_rnkt$incomplete,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Rank in descending order (Max ranked 1st)
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnkt_id_descending",
+                                                                        label = "Rank in descending order (max ranked 1)",
+                                                                        value = def_list_rnkt$descending,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                        ),
+                                                        
+                                                        wellPanel( 
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                h4("Display options"),
+                                                                
+                                                                # Select display countries/aggregates
+                                                                pickerInput(
+                                                                        inputId = "gr_rnkt_id_ctries_disp",
+                                                                        label = "Select countries/aggregates to display", 
+                                                                        choices = c(""),
+                                                                        options = list(size = 15,
+                                                                                `actions-box` = TRUE),
+                                                                        multiple = TRUE
+                                                                ),
+                                                                
+                                                                # Include title
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnkt_id_title",
+                                                                        label = "Include title",
+                                                                        value = def_list_rnkt$title,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include Y-axis units
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnkt_id_yaxis",
+                                                                        label = "Include Y-axis units",
+                                                                        value = def_list_rnkt$yaxis,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include source
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnkt_id_source",
+                                                                        label = "Include source",
+                                                                        value = def_list_rnkt$source,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include subperiods
+                                                                conditionalPanel(
+                                                                        condition = "input.in_id_time_subper == true",
+                                                                        materialSwitch (
+                                                                                inputId = "gr_rnkt_id_time_subper",
+                                                                                label = "Include subperiods",
+                                                                                value = def_list_rnkt$time_subper,
+                                                                                status = "primary",
+                                                                                right = TRUE)
+                                                                ),
+
+                                                                # Change country names to short
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnkt_id_ctry_short",
+                                                                        label = "Short country names (ISO 3)",
+                                                                        value = def_list_rnkt$ctry_short,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Select font
+                                                                pickerInput(
+                                                                        inputId = "gr_rnkt_id_font",
+                                                                        label = "Select font",
+                                                                        choices = font_list,
+                                                                        selected = def_list_rnkt$font,
+                                                                        choicesOpt = list(
+                                                                                content = c("<div style='font-family: Calibri'>Calibri</div>", 
+                                                                                        "<div style='font-family: sans'>Arial</div>", 
+                                                                                        "<div style='font-family: mono'>Courier</div>", 
+                                                                                        "<div style='font-family: serif'>TimesNewRoman</div>"))
+                                                                ),
+                                                                
+                                                                # Select highlighted country/aggregate and color
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnkt_id_highlight",
+                                                                        label = "Highlight a country/aggregate",
+                                                                        value = def_list_rnkt$highlight,
+                                                                        status = "primary",
+                                                                        right = TRUE),
+                                                                
+                                                                conditionalPanel(
+                                                                        condition = "input.gr_rnkt_id_highlight == true",
+                                                                        
+                                                                        # Input: Country of analysis
+                                                                        selectInput(
+                                                                                inputId = "gr_rnkt_id_highlight_ctry",
+                                                                                label = "Select highlighted country/aggregate",
+                                                                                choices = c(""),
+                                                                                selected = "input.ctry"),
+                                                                        
+                                                                        # Input: Line plot color
+                                                                        colourpicker::colourInput(
+                                                                                inputId ="gr_rnkt_id_highlight_color", 
+                                                                                label = "Select colors of highlighted line", 
+                                                                                value = def_list_rnkt$highlight_color,
+                                                                                allowTransparent = TRUE,
+                                                                                closeOnClick = TRUE),
+                                                                )
+                                                        )
+                                                ),
+                                                        
+                                                mainPanel(
+                                                        
+                                                        # Download graphs options
+                                                        helpText("Download zip file with plots and underlying data (select plot size)"),
+                                                        downloadButton("gr_rnkt_download_large", "Long Plots"),
+                                                        downloadButton("gr_rnkt_download_small", "Small Plots"),
+                                                        tags$br(),
+                                                        tags$br(),
+                                                        
+                                                        # Plots' dynamic UI
+                                                        tags$br(),
+                                                        uiOutput("gr_rnkt_out_plots") %>% withSpinner(type = 3, 
+                                                                color = def_list_data$col_spinner, 
+                                                                color.background = "white"),
+
+                                                )
+                                        )
+                                ),
+                                
+                                tabPanel(title = "Static",
+                                        
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        
+                                        sidebarLayout(
+                                                
+                                                sidebarPanel(
+                                                        
+                                                        actionButtonStyled(
+                                                                inputId = "gr_rnks_id_update",
+                                                                label = "Update plots",
+                                                                icon = NULL,
+                                                                width = NULL,
+                                                                btn_type = "btn-sm",
+                                                                type = "success"),
+                                                        
+                                                        tags$br(),
+                                                        tags$p(),
+                                                        
+                                                        wellPanel( 
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                h4("Plot parameters"),
+                                                                
+                                                                # Select countries
+                                                                pickerInput(
+                                                                        inputId = "gr_rnks_id_ctries",
+                                                                        label = "Select countries/aggregates", 
+                                                                        choices = c(""),
+                                                                        options = list(size = 15,
+                                                                                `actions-box` = TRUE),
+                                                                        multiple = TRUE
+                                                                ),
+                                                                
+                                                                # Select variables
+                                                                pickerInput(
+                                                                        inputId = "gr_rnks_id_vars",
+                                                                        label = "Select variables", 
+                                                                        choices = c(""),
+                                                                        options = list(size = 15,
+                                                                                `actions-box` = TRUE),
+                                                                        multiple = TRUE
+                                                                ),
+                                                                
+                                                                # Select statistic
+                                                                pickerInput(
+                                                                        inputId = "gr_rnks_id_stat",
+                                                                        label = "Method of aggregation by period", 
+                                                                        choices = stats_vec,
+                                                                        selected = def_list_rnks$stat,
+                                                                        multiple = FALSE
+                                                                ),
+                                                                
+                                                                # Select range
+                                                                sliderInput(
+                                                                        inputId = "gr_rnks_id_time_range",
+                                                                        label = "Select range",
+                                                                        sep = "",
+                                                                        min = def_list_rnks$time_range[1],
+                                                                        max = def_list_rnks$time_range[2],
+                                                                        step = 1,
+                                                                        value = c(def_list_rnks$time_range[1], def_list_rnks$time_range[2])
+                                                                )
+                                                                
+                                                        ),
+                                                        
+                                                        wellPanel( 
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                h4("Display options"),
+                                                                
+                                                                # Include title
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnks_id_title",
+                                                                        label = "Include title",
+                                                                        value = def_list_rnks$title,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include Y-axis units
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnks_id_yaxis",
+                                                                        label = "Include Y-axis units",
+                                                                        value = def_list_rnks$yaxis,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include source
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnks_id_source",
+                                                                        label = "Include source",
+                                                                        value = def_list_rnks$source,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include data labels
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnks_id_data_labels",
+                                                                        label = "Include data labels",
+                                                                        value = def_list_rnks$data_labels,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Plot horizontally
+                                                                materialSwitch (inputId = "gr_rnks_id_horizontal",
+                                                                        label = "Plot horizontally",
+                                                                        value = def_list_rnks$horizontal,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Transform data to Trillion/Billion/Million/Thousands
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnks_id_transform_zeros",
+                                                                        label = "Transform data to Trillion/Billion/Million/Thousands",
+                                                                        value = def_list_rnks$transform_zeros,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Transform data to logs (applies only to positive series)
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnks_id_transform_log",
+                                                                        label = "Transform data to logs (applies only to positive series)",
+                                                                        value = def_list_rnks$transform_log,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Change country names to short
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnks_id_ctry_short",
+                                                                        label = "Short country names (ISO 3)",
+                                                                        value = def_list_rnks$ctry_short,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Number of digits
+                                                                numericInput(
+                                                                        inputId = "gr_rnks_id_digits",
+                                                                        label = "Number of digits in labels",
+                                                                        min = 0,
+                                                                        value = def_list_rnks$digits
+                                                                ),
+                                                                
+                                                                # Number of digits Y-axis
+                                                                numericInput(
+                                                                        inputId = "gr_rnks_id_digits_y",
+                                                                        label = "Number of digits in Y-axis",
+                                                                        min = 0,
+                                                                        value = def_list_rnks$digits_y
+                                                                ),
+                                                                
+                                                                # Select font
+                                                                pickerInput(
+                                                                        inputId = "gr_rnks_id_font",
+                                                                        label = "Select font",
+                                                                        choices = font_list,
+                                                                        selected = def_list_rnks$font,
+                                                                        choicesOpt = list(
+                                                                                content = c("<div style='font-family: Calibri'>Calibri</div>", 
+                                                                                        "<div style='font-family: sans'>Arial</div>", 
+                                                                                        "<div style='font-family: mono'>Courier</div>", 
+                                                                                        "<div style='font-family: serif'>TimesNewRoman</div>"))
+                                                                ),
+                                                                
+                                                                # Select highlighted country/aggregate and color
+                                                                materialSwitch(
+                                                                        inputId = "gr_rnks_id_highlight",
+                                                                        label = "Highlight a country/aggregate",
+                                                                        value = def_list_rnks$highlight,
+                                                                        status = "primary",
+                                                                        right = TRUE),
+                                                                
+                                                                conditionalPanel(
+                                                                        condition = "input.gr_rnks_id_highlight == true",
+                                                                        
+                                                                        # Input: Country of analysis
+                                                                        selectInput(
+                                                                                inputId = "gr_rnks_id_highlight_ctry",
+                                                                                label = "Select highlighted country/aggregate",
+                                                                                choices = c(""),
+                                                                                selected = "input.ctry"),
+                                                                        
+                                                                )
+                                                                
+                                                        )
+                                                        
+                                                ),
+                                                mainPanel(
+                                                        
+                                                        # Download graphs options
+                                                        helpText("Download zip file with plots and underlying data (select plot size)"),
+                                                        downloadButton("gr_rnks_download_large", "Long Plots"),
+                                                        downloadButton("gr_rnks_download_small", "Small Plots"),
+                                                        tags$br(),
+                                                        tags$br(),
+                                                        
+                                                        # Plots' dynamic UI
+                                                        tags$br(),
+                                                        uiOutput("gr_rnks_out_plots") %>% withSpinner(type = 3, 
+                                                                color = def_list_data$col_spinner, 
+                                                                color.background = "white"),
+                                                        
+                                                        
+                                                )
+                                        )
+                                )
+                        ),
+                        
+                        
+                        ##################################################################################
                         
                         tabPanel(title = "Scatter plots",
                                 
@@ -2893,7 +3382,6 @@ server <- function(input, output, session) {
         
         
         # Update subperiod inputs as range changes
-        
         observeEvent(input$in_id_time_range, {
                 
                 print("Data - Inputs [1/5]: Number of subperiods (observeEvent)")
@@ -2906,165 +3394,6 @@ server <- function(input, output, session) {
                         value = min(input$in_id_time_range[2] - input$in_id_time_range[1] + 1, input$in_id_time_subper_num))
                 
         })
-        
-        # observeEvent(c(input$in_id_time_range,
-        #         input$in_id_time_subper_num
-        #         ), {
-        #                 
-        #         print("Data - Inputs [1/5]: Subperiod limits (observeEvent - changes in range/number of subperiods)")
-        #         
-        #         if(input$in_id_time_subper_num == 2){
-        #                 
-        #                 slider1limit_max <- input$in_id_time_range[2] - 1
-        #                 slider1limit_min <- input$in_id_time_range[1]
-        #                 
-        #                 value1 <- max(min(slider1limit_max, input$in_id_time_limit_1), slider1limit_min)
-        #                 
-        #         }
-        #                 
-        #         if(input$in_id_time_subper_num == 3){
-        #                 
-        #                 slider1limit_max <- input$in_id_time_limit_2 - 1
-        #                 slider1limit_min <- input$in_id_time_range[1]
-        #                 
-        #                 slider2limit_max <- input$in_id_time_range[2] - 1
-        #                 slider2limit_min <- input$in_id_time_limit_1 + 1
-        #                 
-        #                 value1 <- max(min(slider1limit_max, input$in_id_time_limit_1), slider1limit_min)
-        #                 value2 <- max(min(slider2limit_max, input$in_id_time_limit_2), slider2limit_min)
-        #                 
-        #         }        
-        #                         
-        #         if(input$in_id_time_subper_num == 4){
-        #                 
-        #                 slider1limit_max <- input$in_id_time_limit_2 - 1
-        #                 slider1limit_min <- input$in_id_time_range[1]
-        #                 
-        #                 slider2limit_max <- input$in_id_time_limit_3 - 1
-        #                 slider2limit_min <- input$in_id_time_limit_1 + 1
-        #                 
-        #                 slider3limit_max <- input$in_id_time_range[2] - 1
-        #                 slider3limit_min <- input$in_id_time_limit_2 + 1
-        #                 
-        #                 value1 <- max(min(slider1limit_max, input$in_id_time_limit_1), slider1limit_min)
-        #                 value2 <- max(min(slider2limit_max, input$in_id_time_limit_2), slider2limit_min)
-        #                 value3 <- max(min(slider3limit_max, input$in_id_time_limit_3), slider3limit_min)
-        #                 
-        #         }
-        #         
-        #         if(input$in_id_time_subper_num >= 2){        
-        #                 updateSliderInput(
-        #                         session = session,
-        #                         inputId = "in_id_time_limit_1",
-        #                         min = input$in_id_time_range[1],
-        #                         max = input$in_id_time_range[2],
-        #                         step = 1,
-        #                         value = value1)
-        #         }
-        #         
-        #         if(input$in_id_time_subper_num >= 3){
-        #                 updateSliderInput(
-        #                         session = session,
-        #                         inputId = "in_id_time_limit_2",
-        #                         min = input$in_id_time_range[1],
-        #                         max = input$in_id_time_range[2],
-        #                         step = 1,
-        #                         value = value2)
-        #                 }
-        #         
-        #         if(input$in_id_time_subper_num == 4){
-        #                 updateSliderInput(
-        #                         session = session,
-        #                         inputId = "in_id_time_limit_3",
-        #                         min = input$in_id_time_range[1],
-        #                         max = input$in_id_time_range[2],
-        #                         step = 1,
-        #                         value = value3)
-        #         }      
-        # 
-        # 
-        # })
-        # 
-        # observeEvent(input$in_id_time_limit_1, {
-        #         
-        #         # An alternative to calculating the value and updating would be to restrict the slider values
-        #         # See example here: http://ionden.com/a/plugins/ion.rangeslider/skins.html
-        #         
-        #         print("Data - Inputs [1/5]: Subperiod limits (observeEvent - changes in period 1 limit)")
-        #         
-        #         if(input$in_id_time_subper_num == 2){
-        #                 slider1limit_max <- input$in_id_time_range[2] - 1
-        #                 slider1limit_min <- input$in_id_time_range[1]
-        #         }
-        #         
-        #         if(input$in_id_time_subper_num >= 3){
-        #                 
-        #                 slider1limit_max <- input$in_id_time_limit_2 - 1
-        #                 slider1limit_min <- input$in_id_time_range[1]
-        #                 
-        #         }
-        #         
-        #         value1 <- max(min(slider1limit_max, input$in_id_time_limit_1), slider1limit_min)
-        #         
-        #         updateSliderInput(
-        #                 session = session,
-        #                 inputId = "in_id_time_limit_1",
-        #                 min = input$in_id_time_range[1],
-        #                 max = input$in_id_time_range[2],
-        #                 step = 1,
-        #                 value = value1)
-        #         
-        # })
-        # 
-        # observeEvent(input$in_id_time_limit_2, {
-        #         
-        #         print("Data - Inputs [1/5]: Subperiod limits (observeEvent - changes in period 2 limit)")
-        #         
-        #         if(input$in_id_time_subper_num == 3){
-        #                 
-        #                 slider2limit_max <- input$in_id_time_range[2] - 1
-        #                 slider2limit_min <- input$in_id_time_limit_1 + 1
-        # 
-        #         }        
-        #         
-        #         if(input$in_id_time_subper_num == 4){
-        #                 
-        #                 slider2limit_max <- input$in_id_time_limit_3 - 1
-        #                 slider2limit_min <- input$in_id_time_limit_1 + 1
-        # 
-        #         }
-        #         
-        #         value2 <- max(min(slider2limit_max, input$in_id_time_limit_2), slider2limit_min)
-        #         
-        #         updateSliderInput(
-        #                 session = session,
-        #                 inputId = "in_id_time_limit_2",
-        #                 min = input$in_id_time_range[1],
-        #                 max = input$in_id_time_range[2],
-        #                 step = 1,
-        #                 value = value2)
-        #         
-        # })
-        # 
-        # observeEvent(input$in_id_time_limit_3, {
-        #         
-        #         print("Data - Inputs [1/5]: Subperiod limits (observeEvent - changes in period 3 limit)")
-        #         
-        #         slider3limit_max <- input$in_id_time_range[2] - 1
-        #         slider3limit_min <- input$in_id_time_limit_2 + 1
-        #         value3 <- max(min(slider3limit_max, input$in_id_time_limit_3), slider3limit_min)
-        #         
-        #         updateSliderInput(
-        #                 session = session,
-        #                 inputId = "in_id_time_limit_3",
-        #                 min = input$in_id_time_range[1],
-        #                 max = input$in_id_time_range[2],
-        #                 step = 1,
-        #                 value = value3)
-        #         
-        # })
-        
-        ########################################################################################
         
         output$in_id_time_limit_1_ui <- renderUI({
                 
@@ -3160,9 +3489,6 @@ server <- function(input, output, session) {
                         value = value)
                 
         })
-        
-        ########################################################################################
-        
         
         # Update WDI variables
         observe({
@@ -4535,10 +4861,8 @@ server <- function(input, output, session) {
                 
                 # Country (if previously selected country is in new dataset, keep selection, else select first country from vector)
                 aux_ctry <- unique(rv_df$dat_all$Country)
-                if(!rv_bar$ctries_ctry %in% aux_ctry){
-                        rv_bar$ctries_ctry <- aux_ctry[1]
-                }
-                
+                rv_bar$ctries_ctry <- aux_ctry[1]
+
                 # Variables (select all variables from new dataset)
                 aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
                 rv_bar$vars <- aux_var
@@ -5097,12 +5421,10 @@ server <- function(input, output, session) {
                 
                 print("Plots - Mult [2]: Updating reactive values [changes in raw data]")
                 
-                # Country (if previously selected country is in new dataset, keep selection, else select first country from vector)
-                aux_ctry <- unique(rv_df$dat_all$Country)
-                if(!setequal(rv_mult$ctries, aux_ctry)){
-                        rv_mult$ctries <- aux_ctry
-                }
-                
+                # Country 
+                aux_ctries <- unique(rv_df$dat_all$Country)
+                rv_mult$ctries <- aux_ctries[aux_ctries %in% c(rv_input$ctries_ctry, rv_input$ctries_asp, rv_input$ctries_str, rv_input$ctries_reg)]
+
                 # Variables (select all variables from new dataset)
                 aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
                 rv_mult$vars <- aux_var
@@ -5133,7 +5455,7 @@ server <- function(input, output, session) {
                 rv_mult$time_subper <- input$gr_mult_id_time_subper
                 rv_mult$transform_zeros <- input$gr_mult_id_transform_zeros
                 rv_mult$transform_log <- input$gr_mult_id_transform_log
-                rv_mult$ctry_short = input$gr_mult_id_ctry_short
+                rv_mult$ctry_short <- input$gr_mult_id_ctry_short
                 rv_mult$digits <- input$gr_mult_id_digits
                 rv_mult$digits_y <- input$gr_mult_id_digits_y
                 rv_mult$font <- input$gr_mult_id_font
@@ -5150,7 +5472,7 @@ server <- function(input, output, session) {
                 
                 print("Plots - Mult [3]: preparing data")
                 
-                if(nrow(rv_df$dat_all)==0){return()} 
+                if(nrow(rv_df$dat_all)==0){return()}
 
                 graph_input <- prep_data_for_graphs(
                         df = rv_df$dat_all,
@@ -5404,6 +5726,10 @@ server <- function(input, output, session) {
                                         c(subtitle_text, ", period most recent value"),
                                         collapse = "")}}
                 }
+                
+                if(rv_mult$stat == "None (raw annual data)"){
+                        table$sum_value <- table$Value
+                }
 
                 # Include years in subtitle if no sub-periods
                 if(rv_mult$title & (!rv_mult$time_subper | !rv_input$time_subper)){
@@ -5432,7 +5758,7 @@ server <- function(input, output, session) {
                 p <- ggplot(data = table,
                         aes(x = Country_aux,
                                 y = sum_value,
-                                fill = if(!rv_input$time_subper | !rv_mult$time_subper){rv_mult$color} else {Period_num},
+                                fill = if(rv_mult$stat != "None (raw annual data)"){if(!rv_input$time_subper | !rv_mult$time_subper){rv_mult$color} else {Period_num}}else{as.factor(Year)},
                                 order = Period_num)
                         )+
 
@@ -5503,10 +5829,15 @@ server <- function(input, output, session) {
 
                         # Color palette / Hide legend if no time period break / Set legend position
                         if(rv_mult$time_subper){
+                                if(rv_mult$stat == "None (raw annual data)" & rv_mult$time_range[2]-rv_mult$time_range[1]+1 > 9){
+                                        p <- p + scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.9)
+                                }else{
+                                        p <- p + scale_fill_brewer(palette = rv_mult$color_pal)
+                                }
+                                
+                                p <- p + theme(legend.position = rv_mult$legend_pos)
 
-                                p <- p +
-                                        scale_fill_brewer(palette = rv_mult$color_pal) +
-                                        theme(legend.position = rv_mult$legend_pos)
+
                         } else {p <- p + theme(legend.position = "none")}
 
                 }else {p <- p + theme(legend.position = "none")}
@@ -5753,6 +6084,7 @@ server <- function(input, output, session) {
 
                 # Individual plot parameters
                 vars = def_list_stas$vars,
+                stacked_100 = def_list_stas$stacked_100,
                 title_text = def_list_stas$title_text,
                 yaxis_text = def_list_stas$yaxis_text,
 
@@ -5843,6 +6175,11 @@ server <- function(input, output, session) {
                         if(is.null(eval(parse(text = paste0("rv_stas$vars", i))))){
                                 eval(parse(text = paste0("rv_stas$vars", i, " <- rv_stas$vars")))
                         }
+                        
+                        # Stacked 100
+                        if(is.null(eval(parse(text = paste0("rv_stas$stacked_100", i))))){
+                                eval(parse(text = paste0("rv_stas$stacked_100", i, " <- rv_stas$stacked_100")))
+                        }
 
                         # Title and Y-axis legend
                         if(is.null(eval(parse(text = paste0("rv_stas$title_text", i))))){
@@ -5887,6 +6224,14 @@ server <- function(input, output, session) {
                                                 select = eval(parse(text = paste0("rv_stas$vars", i))),
                                                 options = list(placeholder = 'Select')
                                         ),
+                                        
+                                        materialSwitch(
+                                                inputId = paste0('gr_stas_id_stacked_100', i),
+                                                label = "100 percent stacked bars",
+                                                value = eval(parse(text = paste0("rv_stas$stacked_100", i))),
+                                                status = "primary",
+                                                right = TRUE
+                                        ),
 
                                         textInput(
                                                 inputId = paste0("gr_stas_id_title_text",i),
@@ -5911,9 +6256,7 @@ server <- function(input, output, session) {
                 
                 # Country (if previously selected country is in new dataset, keep selection, else select first country from vector)
                 aux_ctry <- unique(rv_df$dat_all$Country)
-                if(!rv_stas$ctries_ctry %in% aux_ctry){
-                        rv_stas$ctries_ctry <- aux_ctry[1]
-                }
+                rv_stas$ctries_ctry <- aux_ctry[1]
 
                 # Variables (select all variables from new dataset)
                 aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
@@ -5941,6 +6284,7 @@ server <- function(input, output, session) {
                 for (i in 1:input$gr_stas_id_plot_num){
 
                         eval(parse(text = paste0("rv_stas$vars", i, " <- input$gr_stas_id_vars", i)))
+                        eval(parse(text = paste0("rv_stas$stacked_100", i, " <- input$gr_stas_id_stacked_100", i)))
                         eval(parse(text = paste0("rv_stas$title_text", i, " <- input$gr_stas_id_title_text", i)))
                         eval(parse(text = paste0("rv_stas$yaxis_text", i, " <- input$gr_stas_id_yaxis_text", i)))
 
@@ -6001,8 +6345,21 @@ server <- function(input, output, session) {
                                 # Title
                                 df_aux_2 <- df_aux_2 %>% tibble::add_column(
                                         Title = as.character(paste0(eval(parse(text = paste0("rv_stas$title_text", i))), " - ", rv_stas$ctries_ctry)),
-                                        Y_axis = as.character(eval(parse(text = paste0("rv_stas$yaxis_text", i))))
+                                        Y_axis = as.character(eval(parse(text = paste0("rv_stas$yaxis_text", i)))),
+                                        Stacked_100 = as.logical(eval(parse(text = paste0("rv_stas$stacked_100", i))))
                                                 )
+                                
+                                # Stacked 100
+                                if(eval(parse(text = paste0("rv_stas$stacked_100",i)))){
+                                        
+                                        df_aux_2 <- df_aux_2 %>% 
+                                                group_by(Year) %>% 
+                                                mutate(Value_aux = 100 * Value / sum(Value) ) %>% 
+                                                ungroup
+                                        
+                                        df_aux_2$Value <- df_aux_2$Value_aux 
+                                        
+                                }
 
                                 # Append to list
                                 df_aux_2 <- df_aux_2 %>% as_tibble()
@@ -6038,7 +6395,7 @@ server <- function(input, output, session) {
         # Create plots
         createUI_stas <- function(table) {
 
-                rv_plots$stas_counter <- rv_plots$stas_counter +1
+                rv_plots$stas_counter <- rv_plots$stas_counter + 1
                 print(paste0("Render stas plot ", rv_plots$stas_counter, "/", rv_plots$stas_counter_total))
 
                 rectangle_text <- rv_stas$rectangle_text
@@ -6121,6 +6478,12 @@ server <- function(input, output, session) {
                 
                 # Title
                 title_text_paragraph <- str_wrap(title_text, width = 130)
+                
+                # Stacked 100
+                if(unique(table$Stacked_100)){
+                        subtitle_text <- ""
+                        yaxis_units <- "Percent"
+                }
 
                 # Actually create plot
                 p <- ggplot(table, aes(fill = Var_name, x = Year, y = Value))+
@@ -6173,25 +6536,29 @@ server <- function(input, output, session) {
                                 position = position_stack(vjust=0.5),
                                 size = 3,
                                 family = rv_stas$font, 
-                                na.rm = TRUE) +
-                        geom_text(data = totals,
-                                aes(x = Year,
-                                y = total,
-                                label = format(round(as.numeric(total), rv_stas$digits),
-                                        nsmall = rv_stas$digits, big.mark = ",")
-                                ),
-                                vjust = -1,
-                                hjust = 0.5,
-                                size = 3,
-                                family = rv_stas$font,
-                                inherit.aes = FALSE, 
-                                na.rm = TRUE) +
-                        geom_point(data = totals, 
-                                aes(x = Year, y = total), 
-                                color = "black", 
-                                size = 2, 
-                                inherit.aes = FALSE, 
                                 na.rm = TRUE)
+                
+                        if(!unique(table$Stacked_100)){
+                                
+                                p <- p + geom_text(data = totals,
+                                                aes(x = Year,
+                                                        y = total,
+                                                        label = format(round(as.numeric(total), rv_stas$digits),
+                                                                nsmall = rv_stas$digits, big.mark = ",")
+                                                ),
+                                                vjust = -1,
+                                                hjust = 0.5,
+                                                size = 3,
+                                                family = rv_stas$font,
+                                                inherit.aes = FALSE, 
+                                                na.rm = TRUE)+ 
+                                        geom_point(data = totals, 
+                                                aes(x = Year, y = total), 
+                                                color = "black", 
+                                                size = 2, 
+                                                inherit.aes = FALSE, 
+                                                na.rm = TRUE)
+                        }
                 }
 
                 # Increase range of Y axis to make room for the box indicating subperiod
@@ -6264,7 +6631,6 @@ server <- function(input, output, session) {
                 # Period average lines
                 if(rv_stas$time_subper_avg){
                         if(rv_input$time_subper & rv_stas$time_subper){
-                                print("7")
                                 vec_average <- totals %>%
                                         group_by(Period) %>%
                                         summarise_at(vars(total),
@@ -6275,7 +6641,6 @@ server <- function(input, output, session) {
                                 rectangle_text <- merge(x = rectangle_text,
                                         y = as.data.frame(vec_average),
                                         by = "Period")
-                                print("8")
                                 for(i in 1:nrow(rectangle_text)){
                                         yvalue <- vec_average %>% filter(Period == rectangle_text$Period[i]) %>% select(Value_avg)
                                         period_average <- yvalue[[1]]
@@ -6350,7 +6715,7 @@ server <- function(input, output, session) {
                         yaxis_number_labels <- length(x)
                         yaxis_number_labels_obs <- length(unique(round(x, digits)))
                 }
-
+                
                 # Append plot to the list of plots
                 rv_plots$stas <- list.append(rv_plots$stas, p)
                 
@@ -6487,6 +6852,7 @@ server <- function(input, output, session) {
                 
                 # Individual plot parameters
                 vars = def_list_stam$vars,
+                stacked_100 = def_list_stam$stacked_100,
                 title_text = def_list_stam$title_text,
                 yaxis_text = def_list_stam$yaxis_text,
                 
@@ -6579,6 +6945,11 @@ server <- function(input, output, session) {
                                         eval(parse(text = paste0("rv_stam$vars", i, " <- rv_stam$vars")))
                                 }
                                 
+                                # Stacked 100
+                                if(is.null(eval(parse(text = paste0("rv_stam$stacked_100", i))))){
+                                        eval(parse(text = paste0("rv_stam$stacked_100", i, " <- rv_stam$stacked_100")))
+                                }
+                                
                                 # Title and Y-axis legend
                                 if(is.null(eval(parse(text = paste0("rv_stam$title_text", i))))){
                                         if(i==1){title <- rv_stam$title_text}else{title <- paste0("Title ", i)}
@@ -6623,6 +6994,14 @@ server <- function(input, output, session) {
                                                 options = list(placeholder = 'Select')
                                         ),
                                         
+                                        materialSwitch(
+                                                inputId = paste0('gr_stam_id_stacked_100', i),
+                                                label = "100 percent stacked bars",
+                                                value = eval(parse(text = paste0("rv_stam$stacked_100", i))),
+                                                status = "primary",
+                                                right = TRUE
+                                        ),
+                                        
                                         textInput(
                                                 inputId = paste0("gr_stam_id_title_text",i),
                                                 label = "Plot title text",
@@ -6644,11 +7023,9 @@ server <- function(input, output, session) {
                 
                 print("Plots - Stam [4]: Updating reactive values [changes in raw data]")
                 
-                # Country (if previously selected country is in new dataset, keep selection, else select first country from vector)
-                aux_ctry <- unique(rv_df$dat_all$Country)
-                if(!setequal(rv_stam$ctries, aux_ctry)){
-                        rv_stam$ctries <- aux_ctry
-                }
+                # Country 
+                aux_ctries <- unique(rv_df$dat_all$Country)
+                rv_stam$ctries <- aux_ctries[aux_ctries %in% c(rv_input$ctries_ctry, rv_input$ctries_asp, rv_input$ctries_str, rv_input$ctries_reg)]
                 
                 # Variables (select all variables from new dataset)
                 aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
@@ -6677,6 +7054,7 @@ server <- function(input, output, session) {
                 for (i in 1:input$gr_stam_id_plot_num){
                         
                         eval(parse(text = paste0("rv_stam$vars", i, " <- input$gr_stam_id_vars", i)))
+                        eval(parse(text = paste0("rv_stam$stacked_100", i, " <- input$gr_stam_id_stacked_100", i)))
                         eval(parse(text = paste0("rv_stam$title_text", i, " <- input$gr_stam_id_title_text", i)))
                         eval(parse(text = paste0("rv_stam$yaxis_text", i, " <- input$gr_stam_id_yaxis_text", i)))
                         
@@ -6737,8 +7115,22 @@ server <- function(input, output, session) {
                                 # Title
                                 df_aux_2 <- df_aux_2 %>% tibble::add_column(
                                         Title = as.character(paste0(eval(parse(text = paste0("rv_stam$title_text", i))))),
-                                        Y_axis = as.character(eval(parse(text = paste0("rv_stam$yaxis_text", i))))
+                                        Y_axis = as.character(eval(parse(text = paste0("rv_stam$yaxis_text", i)))),
+                                        Stacked_100 = as.logical(eval(parse(text = paste0("rv_stam$stacked_100", i))))
+                                        
                                 )
+                                
+                                # Stacked 100
+                                if(eval(parse(text = paste0("rv_stam$stacked_100",i)))){
+                                        
+                                        df_aux_2 <- df_aux_2 %>% 
+                                                group_by(Year, Country) %>% 
+                                                mutate(Value_aux = 100 * Value / sum(Value) ) %>% 
+                                                ungroup
+                                        
+                                        df_aux_2$Value <- df_aux_2$Value_aux 
+                                        
+                                }
                                 
                                 # Append to list
                                 df_aux_2 <- df_aux_2 %>% as_tibble()
@@ -6925,6 +7317,10 @@ server <- function(input, output, session) {
                                         collapse = "")}}
                 }
                 
+                if(rv_stam$stat == "None (raw annual data)"){
+                        table$sum_value <- table$Value
+                }
+                
                 # Include years in subtitle if no sub-periods
                 if(rv_stam$title & (!rv_stam$time_subper | !rv_input$time_subper)){
                         subtitle_text <- paste(
@@ -6971,15 +7367,41 @@ server <- function(input, output, session) {
                         totals$Ctry_group_num,
                         totals$Country_aux), ]
                 
+                if(rv_stam$stat == "None (raw annual data)"){
+
+                        totals <- table %>%
+                                group_by(Country_aux, Ctry_group_num, Year) %>%
+                                summarize(total = sum(sum_value), .groups = "drop")
+                        
+                        totals <- totals[order(
+                                totals$Ctry_group_num,
+                                totals$Country_aux,
+                                totals$Year), ]
+                        
+                        totals2 <- table %>%
+                                group_by(Country_aux, Year) %>%
+                                summarize(total = sum(sum_value), .groups = "drop")
+                        
+                        totals2 <- totals2[order(
+                                totals$Year,
+                                totals$Country_aux), ]
+                }
+                
                 # Title paragraph 
                 title_text_paragraph <- str_wrap(title_text, width = 130)
+                
+                # Stacked 100
+                if(unique(table$Stacked_100)){
+                        subtitle_text <- ""
+                        yaxis_units <- "Percent"
+                }
                 
                 # Actually create plot
                 p <- ggplot(data = table,
                         aes(fill = Var_name,
-                                x = Period_num,
+                                x = if(rv_stam$stat == "None (raw annual data)"){as.factor(Year)}else{Period_num},
                                 y = sum_value,
-                                order = Period_num
+                                order = if(rv_stam$stat == "None (raw annual data)"){as.factor(Year)}else{Period_num}
                                 ),
                         
                         )+
@@ -7064,7 +7486,7 @@ server <- function(input, output, session) {
                 if(rv_stam$data_labels){p <- p +
                         geom_text(data = table,
                                 aes(
-                                        x = Period_num,
+                                        x = if(rv_stam$stat == "None (raw annual data)"){as.factor(Year)}else{Period_num},
                                         y = sum_value,
                                         label = ifelse(sum_value > labels_filter,
                                                 format(round(as.numeric(sum_value), rv_stam$digits),
@@ -7072,26 +7494,30 @@ server <- function(input, output, session) {
                                 position = position_stack(vjust=0.5),
                                 size = 3,
                                 family = rv_stam$font,
-                                na.rm = TRUE)+
-                        geom_text(data = totals,
-                                aes(x = Period_num,
-                                        y = total,
-                                        label = format(round(as.numeric(total), rv_stam$digits),
-                                                nsmall = rv_stam$digits, big.mark = ",")
-                                ),
-                                vjust = -1,
-                                hjust = 0.5,
-                                size = 3,
-                                family = rv_stam$font,
-                                inherit.aes = FALSE,
-                                na.rm = TRUE) +
-                        geom_point(data = totals,
-                                aes(x = Period_num,
-                                        y = total),
-                                color = "black",
-                                size = 2,
-                                inherit.aes = FALSE,
                                 na.rm = TRUE)
+                        
+                        if(!unique(table$Stacked_100)){
+                                
+                                p <- p +                         geom_text(data = totals,
+                                        aes(x = if(rv_stam$stat == "None (raw annual data)"){as.factor(Year)}else{Period_num},
+                                                y = total,
+                                                label = format(round(as.numeric(total), rv_stam$digits),
+                                                        nsmall = rv_stam$digits, big.mark = ",")
+                                        ),
+                                        vjust = -1,
+                                        hjust = 0.5,
+                                        size = 3,
+                                        family = rv_stam$font,
+                                        inherit.aes = FALSE,
+                                        na.rm = TRUE) +
+                                        geom_point(data = totals,
+                                                aes(x = if(rv_stam$stat == "None (raw annual data)"){as.factor(Year)}else{Period_num},
+                                                        y = total),
+                                                color = "black",
+                                                size = 2,
+                                                inherit.aes = FALSE,
+                                                na.rm = TRUE)
+                        }
                 }
                 
                 # Correct digits if numbers are repeated in Y-axis
@@ -7149,10 +7575,10 @@ server <- function(input, output, session) {
                 table$Ctry_group_num <- as.numeric(table$Ctry_group_num)
                 table$Period <- table$Period_num
                 table$Period_num <- as.numeric(table$Period_num)
+                
+                table$Years <- NA
 
                 if(rv_stam$time_subper & rv_input$time_subper){
-                        
-                        table$Years <- NA
                         
                         # Period 1
                         if(rv_stam$time_range[1] > rv_input$time_range_start){
@@ -7448,12 +7874,13 @@ server <- function(input, output, session) {
 
                 print("Plots - Line [2]: Updating reactive values [changes in raw data]")
 
-                # Country (if previously selected country is in new dataset, keep selection, else select first country from vector)
-                aux_ctry <- unique(rv_df$dat_all$Country)
-                if(!setequal(rv_line$ctries, aux_ctry)){
-                        rv_line$ctries <- aux_ctry
-                }
-
+                # Country 
+                aux_ctries <- unique(rv_df$dat_all$Country)
+                rv_line$ctries <- aux_ctries[aux_ctries %in% c(rv_input$ctries_ctry, rv_input$ctries_asp, rv_input$ctries_str, rv_input$ctries_reg)]
+                
+                # Hightlight country
+                rv_line$highlight_ctry <- aux_ctries[1]
+                
                 # Variables (select all variables from new dataset)
                 aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
                 rv_line$vars <- aux_var
@@ -7474,10 +7901,6 @@ server <- function(input, output, session) {
                 rv_line$ctries <- input$gr_line_id_ctries
                 rv_line$vars <- input$gr_line_id_vars
                 rv_line$time_range <- input$gr_line_id_time_range
-                
-                for (i in 1:input$gr_scat_id_plot_num){
-                eval(parse(text = paste0("rv_scat$title_text", i, " <- input$gr_scat_id_title_text", i)))
-                }
                 
                 # Display parameters
                 rv_line$title <- input$gr_line_id_title
@@ -7612,39 +8035,39 @@ server <- function(input, output, session) {
                         }
 
                 # Actually Create plot
-        
-                # Plot if no single country highlight option
-                if(!rv_line$highlight){
-                        
-                        table <- table %>% group_by(Country_aux) %>% mutate(Value_aux = na.locf(Value, na.rm = F))
-                        
-                        aux_table <- table[!is.na(table$Value),]
+                
+                table <- table %>% group_by(Country_aux) %>% mutate(Value_aux = na.locf(Value, na.rm = F))
+                
+                aux_table <- table[!is.na(table$Value),]
 
-                        aux_table <- aux_table %>%
-                                group_by(Country_aux) %>%
-                                slice(which.max(Year)) %>%
-                                select(c("Country_aux", "Year"))
+                aux_table <- aux_table %>%
+                        group_by(Country_aux) %>%
+                        slice(which.max(Year)) %>%
+                        select(c("Country_aux", "Year"))
 
-                        aux_table$label2 <- aux_table$Country_aux
+                aux_table$label2 <- aux_table$Country_aux
 
-                        table <- merge(
-                                x = table,
-                                y = aux_table,
-                                by = c("Country_aux", "Year"),
-                                all.x = TRUE
-                        )
-                        
-                        table <- table %>%
-                                arrange(Ctry_group_num, Country_aux, Year) %>%
-                                mutate(Country_aux = factor(Country_aux),
-                                        Country_aux = fct_reorder2(Country_aux, Ctry_group_num, Country)) %>%
-                                mutate(label = if_else(Year == max(Year), as.character(Country_aux), NA_character_))
+                table <- merge(
+                        x = table,
+                        y = aux_table,
+                        by = c("Country_aux", "Year"),
+                        all.x = TRUE
+                )
+                
+                table <- table %>%
+                        arrange(Ctry_group_num, Country_aux, Year) %>%
+                        mutate(Country_aux = factor(Country_aux),
+                                Country_aux = fct_reorder2(Country_aux, Ctry_group_num, Country)) %>%
+                        mutate(label = if_else(Year == max(Year), as.character(Country_aux), NA_character_))
 
-                        p <- ggplot(data = table, aes(x = Year, y = Value, group = Country_aux, color = Country_aux)) +
-                                geom_point() +
-                                geom_line(data = table[!is.na(table$Value),])
+
+                        # Plot if no single country highlight option
+                        if(!rv_line$highlight){
                                 
-                        
+                        p <- ggplot(data = table, aes(x = Year, y = Value, group = Country_aux, color = Country_aux)) +
+                                geom_point(size = 2) +
+                                geom_line(data = table[!is.na(table$Value),], size = 1)
+                                
                         # Labels
                         p <- p + geom_text_repel(data = table,
                                 aes(x = Year, y = Value_aux, group = Country_aux, color = Country_aux, label = gsub("^.*$", "  ", label)), 
@@ -7677,9 +8100,8 @@ server <- function(input, output, session) {
                                         na.rm = TRUE,
                                         xlim = c(max(table$Year) + ceiling((max(table$Year)-min(table$Year))*0.04)
                                                 , max(table$Year) + ceiling((max(table$Year)-min(table$Year))*0.30))
-                                )
-
-                        
+                                )+ 
+                                scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.9)
                         
                 } else{
                         # Plot if highlight option selected
@@ -7688,37 +8110,87 @@ server <- function(input, output, session) {
                                 Country %in% rv_line$highlight_ctry)
                         rest_df <- filter(table,
                                 !Country %in% rv_line$highlight_ctry)
-        
-                        # Obtain Y-value of last observation to locate label
-                        highlighted_country_last_obs <- highlighted_country_df %>% drop_na(Value)
-                        highlighted_country_last_obs <- subset(highlighted_country_last_obs, Year == max(highlighted_country_last_obs$Year))
-                        highlighted_country_last_obs <- highlighted_country_last_obs %>% pull(Value)
-                        lab <- unique(highlighted_country_df$Country_aux)
-        
-                        # Plot
-                        p <- ggplot(data = table, aes(x = Year, y = Value)) +
-        
-                                # Grey lines (rest of the countries)
-                                geom_line(data = rest_df, aes(x = Year, y = Value, group = Country_aux), color = "grey") +
-                                geom_point(data = rest_df, aes(x = Year, y = Value, group = Country_aux), color = "grey") +
-        
-                                # Highlighted line
-                                geom_line(data = highlighted_country_df, aes(x = Year, y = Value), color = rv_line$highlight_color, size = 1.5) +
-                                geom_point(data = highlighted_country_df, aes(x = Year, y = Value), fill = rv_line$highlight_color, size = 4, stroke = 0.75, colour = "black", shape = 21) +
-        
-                                # Label with country name for highlighted
-                                annotate("text",
-                                        x = rv_line$time_range[2] + 0.5,
-                                        y = highlighted_country_last_obs,
-                                        label = lab,
-                                        color = rv_line$highlight_color,
+                        
+                        p <- ggplot(data = rest_df, aes(x = Year, y = Value, group = Country_aux, color = Country_aux)) +
+                                geom_point(size = 2) +
+                                geom_line(data = rest_df[!is.na(rest_df$Value),], size = 1)
+                        
+                        # Labels
+                        p <- p + geom_text_repel(data = rest_df,
+                                aes(x = Year, y = Value_aux, group = Country_aux, color = Country_aux, label = gsub("^.*$", "  ", label)), 
+                                family = rv_line$font,
+                                size = 3,
+                                segment.alpha = 0,
+                                box.padding = 0.1,
+                                point.padding = 0.6,
+                                nudge_x = 0.7,
+                                force = 0.5,
+                                hjust = 0,
+                                direction = "y",
+                                na.rm = TRUE,
+                                xlim = c(max(rest_df$Year) + ceiling((max(rest_df$Year)-min(rest_df$Year))*0.04)
+                                        , max(rest_df$Year) + ceiling((max(rest_df$Year)-min(rest_df$Year))*0.30))
+                        ) +
+                                geom_text_repel(data = . %>% filter(!is.na(label2)),
+                                        aes(x = Year, y = Value_aux, group = Country_aux, color = Country_aux, label = paste0(" ", label2)),
                                         family = rv_line$font,
-                                        fontface = "bold",
-                                        hjust = "left",
-                                        vjust = "center"
-                                ) +
-                                coord_cartesian(clip = "off") 
-                                
+                                        size = 3,
+                                        segment.curvature = 0,
+                                        segment.color = 'grey',
+                                        segment.size = 0.25,
+                                        box.padding = 0.1,
+                                        point.padding = 0.6,
+                                        nudge_x = 0.7,
+                                        force = 0.5,
+                                        hjust = 0,
+                                        direction = "y",
+                                        na.rm = TRUE,
+                                        xlim = c(max(rest_df$Year) + ceiling((max(rest_df$Year)-min(rest_df$Year))*0.04)
+                                                , max(rest_df$Year) + ceiling((max(rest_df$Year)-min(rest_df$Year))*0.30))
+                                )+ 
+                                scale_colour_grey()
+                        
+                        if(!all(is.na(highlighted_country_df$Value))){
+                                p <- p +                                 geom_line(data = highlighted_country_df, aes(x = Year, y = Value), color = rv_line$highlight_color, size = 1.5) +
+                                        geom_point(data = highlighted_country_df, aes(x = Year, y = Value), fill = rv_line$highlight_color, size = 4, stroke = 0.75, colour = "black", shape = 21) +
+                                        geom_text_repel(data = highlighted_country_df,
+                                                aes(x = Year, y = Value_aux, group = Country_aux, color = Country_aux, label = gsub("^.*$", "  ", label)),
+                                                family = rv_line$font,
+                                                size = 3,
+                                                segment.curvature = 0,
+                                                segment.color = 'grey',
+                                                color = rv_line$highlight_color,
+                                                segment.size = 0.25,
+                                                box.padding = 0.1,
+                                                point.padding = 0.6,
+                                                nudge_x = 0.7,
+                                                force = 0.5,
+                                                hjust = 0,
+                                                direction = "y",
+                                                na.rm = TRUE,
+                                                xlim = c(max(rest_df$Year) + ceiling((max(rest_df$Year)-min(rest_df$Year))*0.04)
+                                                        , max(rest_df$Year) + ceiling((max(rest_df$Year)-min(rest_df$Year))*0.30))
+                                        )+
+                                        geom_text_repel(data = highlighted_country_df %>% filter(!is.na(label2)),
+                                                aes(x = Year, y = Value_aux, group = Country_aux, color = Country_aux, label = paste0(" ", label2)),
+                                                family = rv_line$font,
+                                                size = 5,
+                                                segment.curvature = 0,
+                                                segment.color = 'grey',
+                                                color = rv_line$highlight_color,
+                                                fontface = "bold",
+                                                segment.size = 0.25,
+                                                box.padding = 0.1,
+                                                point.padding = 0.6,
+                                                nudge_x = 0.7,
+                                                force = 0.5,
+                                                hjust = 0,
+                                                direction = "y",
+                                                na.rm = TRUE,
+                                                xlim = c(max(rest_df$Year) + ceiling((max(rest_df$Year)-min(rest_df$Year))*0.04)
+                                                        , max(rest_df$Year) + ceiling((max(rest_df$Year)-min(rest_df$Year))*0.30))
+                                        )
+                        }
                 }
                 
                 # Short country names
@@ -7992,6 +8464,1058 @@ server <- function(input, output, session) {
 
 ##************************************************************************************************** ----
 
+## Ranking across time plots ----
+
+### Reactive values ----
+rv_rnkt <- reactiveValues(
+        
+        # Plot parameters
+        ctries =def_list_rnkt$ctries,
+        vars = def_list_rnkt$vars,
+        time_range = def_list_rnkt$time_range,
+        incomplete = def_list_rnkt$incomplete,
+        descending = def_list_rnkt$descending,
+        
+        # Display parameters
+        ctries_disp =def_list_rnkt$ctries_disp,
+        title = def_list_rnkt$title,
+        yaxis = def_list_rnkt$yaxis,
+        source = def_list_rnkt$source,
+        time_subper = def_list_rnkt$time_subper,
+        ctry_short = def_list_rnkt$ctry_short,
+        font = def_list_rnkt$font,
+        highlight = def_list_rnkt$highlight,
+        highlight_ctry = def_list_rnkt$highlight_ctry,
+        highlight_color = def_list_rnkt$highlight_color
+        
+)
+
+### Update inputs ----
+observeEvent(c(input$in_id_update, input$in_id_reset_confirm) , {
+        
+        print("Plots - Rnkt [1]: Updating inputs")
+        
+        # Country input
+        aux_ctry <- unique(rv_df$dat_all %>% select(Country, Ctry_group, Ctry_group_num))
+        aux_ctry$Ctry_slash_Group <- paste(aux_ctry$Country, aux_ctry$Ctry_group, sep = " | ")
+        aux_ctry <- aux_ctry[order(
+                aux_ctry$Ctry_group_num,
+                aux_ctry$Country), ]
+        ctry_choices <- as.list(aux_ctry$Country)
+        names(ctry_choices) <- aux_ctry$Ctry_slash_Group
+        ctry_select <- c(rv_input$ctries_ctry, rv_input$ctries_str, rv_input$ctries_asp, rv_input$ctries_reg)
+        
+        updatePickerInput(
+                session = session,
+                inputId = 'gr_rnkt_id_ctries',
+                choices = ctry_choices,
+                selected = ctry_select,
+                options = list(size = 15,
+                        `actions-box` = TRUE)
+        )
+        
+        # Country display
+        updatePickerInput(
+                session = session,
+                inputId = 'gr_rnkt_id_ctries_disp',
+                choices = ctry_choices,
+                selected = ctry_select,
+                options = list(size = 15,
+                        `actions-box` = TRUE)
+        )
+        
+        # Variable input
+        aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
+        
+        updatePickerInput(
+                session = session,
+                inputId = 'gr_rnkt_id_vars',
+                label = "Select variables",
+                choices = aux_var,
+                selected = aux_var,
+                options = list(size = 15,
+                        `actions-box` = TRUE)
+        )
+        
+        # Time input
+        updateSliderInput(
+                session = session,
+                inputId = "gr_rnkt_id_time_range",
+                min = rv_input$time_range_start,
+                max = rv_input$time_range_end,
+                step = 1,
+                value = c(rv_input$time_range_start, rv_input$time_range_end)
+        )
+        
+        # Highlighted country input
+        updateSelectInput(
+                inputId = 'gr_rnkt_id_highlight_ctry',
+                choices = ctry_choices,
+                selected = ctry_select[1])
+        
+})
+
+###  Update reactive values to changes in raw data ----
+observeEvent(c(input$in_id_update, input$in_id_reset_confirm),{
+        
+        print("Plots - Rnkt [2]: Updating reactive values [changes in raw data]")
+        
+        # Country 
+        aux_ctries <- unique(rv_df$dat_all$Country)
+        rv_rnkt$ctries <- aux_ctries[aux_ctries %in% c(rv_input$ctries_ctry, rv_input$ctries_asp, rv_input$ctries_str, rv_input$ctries_reg)]
+        
+        # Countries display
+        rv_rnkt$ctries_disp <- aux_ctries[aux_ctries %in% c(rv_input$ctries_ctry, rv_input$ctries_asp, rv_input$ctries_str, rv_input$ctries_reg)]
+        
+        # Hightlight country
+        rv_rnkt$highlight_ctry <- aux_ctries[1]
+        
+        # Variables (select all variables from new dataset)
+        aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
+        rv_rnkt$vars <- aux_var
+        
+        # Time range (select all years of new dataset)
+        aux_year <- c(rv_input$time_range_start, rv_input$time_range_end)
+        rv_rnkt$time_range <- aux_year
+        
+}, ignoreInit = TRUE)
+
+###  Update reactive values to changes in line plot parameters ----
+
+observeEvent(c(input$gr_rnkt_id_update),{
+        
+        print("Plots - Rnkt [2]: Updating reactive values [update bar plot parameters]")
+        
+        # Plot parameters
+        rv_rnkt$ctries <- input$gr_rnkt_id_ctries
+        rv_rnkt$vars <- input$gr_rnkt_id_vars
+        rv_rnkt$time_range <- input$gr_rnkt_id_time_range
+        rv_rnkt$incomplete <- input$gr_rnkt_id_incomplete
+        rv_rnkt$descending <- input$gr_rnkt_id_descending
+        
+        # Display parameters
+        rv_rnkt$ctries_disp <- input$gr_rnkt_id_ctries_disp
+        rv_rnkt$title <- input$gr_rnkt_id_title
+        rv_rnkt$yaxis <- input$gr_rnkt_id_yaxis
+        rv_rnkt$source <- input$gr_rnkt_id_source
+        rv_rnkt$time_subper <- input$gr_rnkt_id_time_subper
+        rv_rnkt$ctry_short <- input$gr_rnkt_id_ctry_short
+        rv_rnkt$font <- input$gr_rnkt_id_font
+        rv_rnkt$highlight <- input$gr_rnkt_id_highlight
+        rv_rnkt$highlight_ctry <- input$gr_rnkt_id_highlight_ctry
+        rv_rnkt$highlight_color <- input$gr_rnkt_id_highlight_color
+        
+}, ignoreInit = TRUE)
+
+### Plots ----
+
+# Prep data
+prepped_data_rnkt <- eventReactive(c(input$in_id_update, input$in_id_reset_confirm, input$gr_rnkt_id_update),{
+        
+        print("Plots - Rnkt [3]: preparing data")
+        
+        if(nrow(rv_df$dat_all)==0){return()}
+        if(length(rv_rnkt$ctries)==0){return()}
+        
+        graph_input <- prep_data_for_graphs(
+                df = rv_df$dat_all,
+                vars = rv_rnkt$vars,
+                ctries = rv_rnkt$ctries,
+                t_start = rv_rnkt$time_range[1],
+                t_end = rv_rnkt$time_range[2]
+        )
+        
+        # Create subperiod variables to include rectangles
+        if(rv_input$time_subper & rv_rnkt$time_subper){
+                subper_list <- subper_rectangles_fun(
+                        subper_num = rv_input$time_subper_num,
+                        time_range = rv_rnkt$time_range,
+                        time_lim_1 = rv_input$time_limit_1,
+                        time_lim_2 = rv_input$time_limit_2,
+                        time_lim_3 = rv_input$time_limit_3,
+                        time_name_1 = rv_input$time_name_1,
+                        time_name_2 = rv_input$time_name_2,
+                        time_name_3 = rv_input$time_name_3,
+                        time_name_4 = rv_input$time_name_4
+                )
+                
+                rv_rnkt$rectangle_text <- subper_list[[1]]
+                rv_rnkt$vertical_lines <- subper_list[[2]]
+        }
+        
+        return(graph_input)
+        
+})
+
+# Create plots
+createUI_rnkt <- function(table) {
+        
+        rv_plots$rnkt_counter <- rv_plots$rnkt_counter +1
+        print(paste0("Render rank dynamic plot ", rv_plots$rnkt_counter, "/", rv_plots$rnkt_counter_total))
+        
+        rectangle_text <- rv_rnkt$rectangle_text
+        vertical_lines <- rv_rnkt$vertical_lines
+        
+        if(all(is.na(table$Value))){return()}
+        
+        # Parameters for plot
+        
+        title_text <- ""
+        subtitle_text <- ""
+        yaxis_units <- ""
+        graph_source <- ""
+        
+        title_text <- if(rv_rnkt$title){paste0(unique(table$Var_name))}
+        title_text_paragraph <- str_wrap(title_text, width = 130)
+        
+        yaxis_units <- if(rv_rnkt$yaxis){
+                "Rank"
+        } else {NULL}
+        
+        if(rv_rnkt$source){
+                graph_source <- unique(table$Database)
+                if(graph_source == "WDI"){
+                        graph_source <- "World Development Indicators"}
+        }
+        
+        # Year axis intervals: if less than 30 years covered, then include all years, otherwise every 2 years
+        intervals <- ifelse(max(rv_rnkt$time_range) - min(rv_rnkt$time_range) < 30, 1, 2)
+        
+        # Warning sign if no data for this variable
+        if(all(is.na(table$Value))) {subtitle_text <- "No data available"}
+        
+        # Short country names
+        if(rv_rnkt$ctry_short){
+                table$Country_aux <- table$Ctry_iso
+                distance <- 0.5
+                limits <- NULL
+        }else{
+                table$Country_aux <- table$Country
+                distance <- 0.5
+                limits <- c(min(rv_rnkt$time_range)-3, max(rv_rnkt$time_range)+3)
+        }
+        
+        # Filter countries with incomplete data
+        if(rv_rnkt$incomplete){
+                table <- table %>%
+                        group_by(Country_aux) %>%
+                        filter(!any(is.na(Value)))
+        }
+        
+        # Descending order
+        
+        table$Oringal_value <- table$Value
+        
+        if(rv_rnkt$descending){
+                table$Value <- -table$Value
+        }
+        
+        # Ranking
+        table <- table %>% group_by(Year) %>% 
+                mutate(Value = rank(Value, na.last="keep", ties.method= "first"))
+        
+        table_allvalues <- table
+        
+        # Filter display countries
+        table <- filter(table,
+                Country %in% rv_rnkt$ctries_disp)
+
+        # Actually Create plot
+        
+        if(!rv_rnkt$highlight){
+                
+                p <- ggplot(table, aes(x = Year, y = Value, color = Country_aux)) +
+                        geom_line(size = 2) +
+                        geom_point(size = 4) +
+                        geom_text(data = filter(table, Year == min(rv_rnkt$time_range)),
+                                aes(label = Country_aux, x = min(rv_rnkt$time_range) - distance),
+                                fontface = "bold",
+                                hjust = 1,
+                                family = rv_rnkt$font) +
+                        geom_text(data = filter(table, Year == max(rv_rnkt$time_range)),
+                                aes(label = Country_aux, x = max(rv_rnkt$time_range) + distance),
+                                fontface = "bold",
+                                hjust = 0,
+                                family = rv_rnkt$font) + 
+                        scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.9)
+
+        }else{
+                
+                # Plot if highlight option selected
+                # Filter data
+                highlighted_country_df <- filter(table,
+                        Country %in% rv_rnkt$highlight_ctry)
+                
+                rest_df <- filter(table,
+                        !Country %in% rv_rnkt$highlight_ctry)
+                
+                # Plot
+                p <- ggplot(data = rest_df, aes(x = Year, y = Value, color = Country_aux)) +
+                        
+                        # Non selected countries
+                        geom_line(data = rest_df, aes(x = Year, y = Value), size = 2) +
+                        geom_point(data = rest_df, aes(x = Year, y = Value), size = 4) +
+                        scale_colour_grey()+
+                        geom_text(data = filter(rest_df, Year == min(rv_rnkt$time_range)),
+                                aes(label = Country_aux, x = min(rv_rnkt$time_range) - distance),
+                                fontface = "bold",
+                                hjust = 1,
+                                family = rv_rnkt$font) +
+                        geom_text(data = filter(rest_df, Year == max(rv_rnkt$time_range)),
+                                aes(label = Country_aux, x = max(rv_rnkt$time_range) + distance),
+                                fontface = "bold",
+                                hjust = 0,
+                                family = rv_rnkt$font)
+                
+
+                if(!all(is.na(highlighted_country_df$Value))){
+                        p <- p +
+                        # Selected countries
+                        geom_line(data = highlighted_country_df, aes(x = Year, y = Value), color = rv_rnkt$highlight_color, size = 2) +
+                        geom_point(data = highlighted_country_df, aes(x = Year, y = Value), color = rv_rnkt$highlight_color, size = 4) +
+                        
+                        geom_text(data = filter(highlighted_country_df, Year == min(rv_rnkt$time_range)),
+                                aes(label = Country_aux, x = min(rv_rnkt$time_range) - distance),
+                                fontface = "bold",
+                                hjust = 1, color = rv_rnkt$highlight_color,
+                                family = rv_rnkt$font
+                                ) +
+                        geom_text(data = filter(highlighted_country_df, Year == max(rv_rnkt$time_range)),
+                                aes(label = Country_aux, x = max(rv_rnkt$time_range) + distance, colour = rv_rnkt$highlight_color),
+                                fontface = "bold",
+                                hjust = 0, color = rv_rnkt$highlight_color,
+                                family = rv_rnkt$font
+                                )
+                }
+        }
+        
+        p <- p +
+                scale_x_continuous(breaks = min(rv_rnkt$time_range):max(rv_rnkt$time_range), limits = limits)+
+                # Theme ans aesthetics
+                theme_minimal() +
+                theme(panel.grid.major.y = element_blank(),
+                        panel.grid.minor.y = element_blank(),
+                        panel.grid.minor.x = element_blank(),
+                        plot.title = element_text(size = 12, face = "bold"),
+                        plot.margin = margin(0.25, 3, 1, 0.25, "cm"),
+                        plot.caption = element_text(hjust = 0, size = 10),
+                        axis.ticks.x = element_blank(),
+                        axis.ticks.y = element_blank(),
+                        axis.text.x = element_text(colour = "black"),
+                        axis.text.y = element_text(colour = "black"),
+                        text = element_text(size = 12,  family = rv_rnkt$font),
+                        legend.position = "none")+
+                # Include title, subtitle, source and Y-axis title
+                labs(title = title_text_paragraph,
+                        subtitle = subtitle_text,
+                        caption = if(rv_rnkt$source){paste("Source: ", graph_source, ".", sep = "")},
+                        y = if(rv_rnkt$yaxis){yaxis_units})
+                #Reverse axis (1 on top)
+                # scale_y_reverse()
+        
+        # Increase margins inside graph by extending the range 15% (7.5% above and below)
+        y_min <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
+        y_max <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
+
+        y_range <- y_max - y_min
+        
+        if(length(unique(table_allvalues$Country))<=30){ybreaks <- seq(0, my_max_fun(table_allvalues$Value), by = 1)
+        ybreaks <- ybreaks[2:length(ybreaks)]
+        }
+        if(length(unique(table_allvalues$Country))>30 & length(unique(table_allvalues$Country))<=60){ybreaks <- seq(0, my_max_fun(table_allvalues$Value), by = 2)
+        ybreaks <- ybreaks[2:length(ybreaks)]}
+        if(length(unique(table_allvalues$Country))>60 & length(unique(table_allvalues$Country))<=120){ybreaks <- seq(0, my_max_fun(table_allvalues$Value), by = 4)
+        ybreaks <- ybreaks[2:length(ybreaks)]}
+        if(length(unique(table_allvalues$Country))>120){ybreaks <- seq(0, my_max_fun(table_allvalues$Value), by = 10)
+        ybreaks <- ybreaks[2:length(ybreaks)]}
+        
+        
+        p <- p + scale_y_reverse(limits = c(my_max_fun(table_allvalues$Value), - ((my_max_fun(table_allvalues$Value) - my_min_fun(table_allvalues$Value)) * 0.05)), 
+                breaks = ybreaks)
+        
+        # To use in vertical lines
+        y_min_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
+        y_max_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
+        y_range_new <- y_max_new - y_min_new
+
+        size_factor <- 0.06
+        ALPHA <- 0.15
+
+        # Subperiod rectangles, their labels and the dotted lines separating
+        if(rv_input$time_subper & rv_rnkt$time_subper ){
+                p <- p +
+                        geom_rect(data = rectangle_text,
+                                aes(NULL, NULL, xmin = my_min_fun(Year_start), xmax = my_max_fun(Year_end)),
+                                ymin = y_max_new, 
+                                ymax = y_max_new - y_range_new * size_factor,
+                                colour = NA,
+                                fill = "grey",
+                                alpha = 1,
+                                inherit.aes = FALSE)+
+                        geom_label(data = rectangle_text,
+                                aes(x = Year_start + (Year_end - Year_start)/2,
+                                        y = -(y_max_new * ALPHA + (y_max_new - y_range_new * size_factor)*(1 - ALPHA)),
+                                        label = Period,
+                                        family = rv_rnkt$font
+                                ),
+                                size = 3.3,
+                                fill = "grey",
+                                alpha = 0,
+                                label.size = NA,
+                                hjust = "center",
+                                vjust = "bottom",
+                                inherit.aes = FALSE)
+
+                for (i in vertical_lines) {
+                        p <- p + geom_segment(x = i,
+                                y = y_max_new,
+                                xend = i,
+                                yend = y_max_new - y_range_new * size_factor,
+                                colour = "white",
+                                size = 1,
+                                alpha = 1) +
+                                geom_segment(x = i,
+                                        y = y_max_new - y_range_new * size_factor,
+                                        xend = i,
+                                        yend = -Inf,
+                                        colour = "grey",
+                                        linetype = "dotted")
+                }
+        }
+
+        # Append plot to the list of plots
+        rv_plots$rnkt <- isolate(list.append(rv_plots$rnkt, p))
+        
+        # Append data
+        table$Title <- title_text
+        table$Subtitle <- subtitle_text
+        table$Y_axis <- yaxis_units
+        table$Source <- graph_source
+        table$Descending <- rv_rnkt$descending
+
+        # Select columns
+        table <- table %>% select(c("Var_name", "Var_code", "Units", "Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year", "Period", "Period_num", "Value", "Database", "Title", "Subtitle", "Y_axis", "Source"))
+        
+        rv_plots$rnkt_data <- isolate(list.append(rv_plots$rnkt_data, table))
+        
+        # Show plot
+        renderPlot(p)
+}
+
+# Call Prep data and Create plots
+output$gr_rnkt_out_plots <- renderUI({
+        
+        print("****************************")
+        print("Plots - Rnkt: start renderUI")
+        
+        rv_plots$rnkt <- list()
+        rv_plots$rnkt_data <- list()
+        
+        pd <- req(prepped_data_rnkt())
+        
+        rv_plots$rnkt_counter <- 0
+        rv_plots$rnkt_counter_total <- length(isolate(pd))
+        
+        final <- isolate(tagList(map(pd, ~ createUI_rnkt(.))))
+        
+        print("Plots - Rnkt: finish renderUI")
+        print("****************************")
+        cat("\n")
+        
+        return(final)
+})
+
+### Plots download handlers ----
+
+# Download plots as png zipped - large
+output$gr_rnkt_download_large <- downloadHandler(
+        filename = 'gr_rnkt_plots_large.zip',
+        content = function(file){
+                
+                # Set temporary working directory
+                owd <- setwd(tempdir())
+                on.exit(setwd(owd))
+                
+                # Save the plots
+                vector_plots <- vector()
+                for (i in 1:length(rv_plots$rnkt)){
+                        
+                        name <- paste("rnktplot_large", i, ".png", sep = "")
+                        ggsave(name,
+                                plot = rv_plots$rnkt[[i]],
+                                device = "png",
+                                width = 11.5,
+                                height = 5.75,
+                                units = "in")
+                        vector_plots <- c(vector_plots, paste("rnktplot_large", i, ".png", sep = ""))
+                        
+                        name_data <- paste("rnktplot_large_data", i, ".csv", sep = "")
+                        write.csv(rv_plots$rnkt_data[[i]], name_data, row.names = FALSE)
+                        vector_plots <- c(vector_plots, paste("rnktplot_large_data", i, ".csv", sep = ""))
+                        
+                }
+                
+                # Zip them up
+                zip(file, vector_plots)
+        }
+)
+
+# Download plots as png zipped - small
+output$gr_rnkt_download_small <- downloadHandler(
+        filename = 'gr_rnkt_plots_small.zip',
+        content = function(file){
+                
+                # Set temporary working directory
+                owd <- setwd(tempdir())
+                on.exit(setwd(owd))
+                
+                # Save the plots
+                vector_plots <- vector()
+                for (i in 1:length(rv_plots$rnkt)){
+                        
+                        # Increase intervals in X axis in small plots
+                        intervals <- ifelse(max(rv_rnkt$time_range) - min(rv_rnkt$time_range) < 30, 2, 4)
+                        if(rv_rnkt$ctry_short){
+                                rv_plots$rnkt[[i]] <- rv_plots$rnkt[[i]] +
+                                        scale_x_continuous(name = "",
+                                                breaks = seq(min(rv_rnkt$time_range),
+                                                        max(rv_rnkt$time_range),
+                                                        by = intervals),
+                                                limits=c(min(rv_rnkt$time_range)-0.5, max(rv_rnkt$time_range)+ ceiling((max(rv_rnkt$time_range)-min(rv_rnkt$time_range))*0.15)),
+                                                expand = c(0, 0)
+                                        )
+                        }else{
+                                rv_plots$rnkt[[i]] <- rv_plots$rnkt[[i]] +
+                                        scale_x_continuous(name = "",
+                                                breaks = seq(min(rv_rnkt$time_range),
+                                                        max(rv_rnkt$time_range),
+                                                        by = intervals),
+                                                limits=c(min(rv_rnkt$time_range)-5, max(rv_rnkt$time_range)+ ceiling((max(rv_rnkt$time_range)-min(rv_rnkt$time_range))*0.5)),
+                                                expand = c(0, 0)
+                                        )
+                        }
+                        
+                        
+                        name <- paste("rnktplot_small", i, ".png", sep = "")
+                        ggsave(name,
+                                plot = rv_plots$rnkt[[i]],
+                                device = "png",
+                                width = 5.75,
+                                height = 5.75,
+                                units = "in")
+                        vector_plots <- c(vector_plots, paste("rnktplot_small", i, ".png", sep = ""))
+                        
+                        name_data <- paste("rnktplot_small_data", i, ".csv", sep = "")
+                        write.csv(rv_plots$rnkt_data[[i]], name_data, row.names = FALSE)
+                        vector_plots <- c(vector_plots, paste("rnktplot_small_data", i, ".csv", sep = ""))
+                        
+                }
+                
+                # Zip them up
+                zip(file, vector_plots)
+        }
+)
+
+##************************************************************************************************** ----
+        
+## Static ranking ----
+
+### Reactive values ----
+rv_rnks <- reactiveValues(
+        
+        # Plot parameters
+        ctries = def_list_rnks$ctries,
+        vars = def_list_rnks$vars,
+        stat = def_list_rnks$stat,
+        time_range = def_list_rnks$time_range,
+        
+        # Display parameters
+        title = def_list_rnks$title,
+        yaxis = def_list_rnks$yaxis,
+        source = def_list_rnks$source,
+        data_labels = def_list_rnks$data_labels,
+        time_subper = def_list_rnks$time_subper,
+        transform_zeros = def_list_rnks$transform_zeros,
+        transform_log = def_list_rnks$transform_log,
+        ctry_short = def_list_rnks$ctry_short,
+        digits = def_list_rnks$digits,
+        digits_y = def_list_rnks$digits_y,
+        font = def_list_rnks$font,
+        color_pal = def_list_rnks$color_pal,
+        color = def_list_rnks$color,
+        horizontal = def_list_rnks$horizontal,
+        highlight = def_list_rnks$highlight,
+        highlight_ctry = def_list_rnks$highlight_ctry
+        
+)
+
+### Update inputs ----
+observeEvent(c(input$in_id_update, input$in_id_reset_confirm), {
+        
+        print("Plots - Rnks [1]: Updating inputs")
+        
+        # Country input
+        aux_ctry <- unique(rv_df$dat_all %>% select(Country, Ctry_group, Ctry_group_num))
+        aux_ctry$Ctry_slash_Group <- paste(aux_ctry$Country, aux_ctry$Ctry_group, sep = " | ")
+        aux_ctry <- aux_ctry[order(
+                aux_ctry$Ctry_group_num,
+                aux_ctry$Country), ]
+        ctry_choices <- as.list(aux_ctry$Country)
+        names(ctry_choices) <- aux_ctry$Ctry_slash_Group
+        ctry_select <- c(rv_input$ctries_ctry, rv_input$ctries_str, rv_input$ctries_asp, rv_input$ctries_reg)
+        
+        updatePickerInput(
+                session = session,
+                inputId = 'gr_rnks_id_ctries',
+                choices = ctry_choices,
+                selected = ctry_choices,
+                options = list(size = 15,
+                        `actions-box` = TRUE)
+        )
+        
+        # Variable input
+        aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
+        
+        updatePickerInput(
+                session = session,
+                inputId = 'gr_rnks_id_vars',
+                label = "Select variables",
+                choices = aux_var,
+                selected = aux_var,
+                options = list(size = 15,
+                        `actions-box` = TRUE)
+        )
+        
+        # Time input
+        updateSliderInput(
+                session = session,
+                inputId = "gr_rnks_id_time_range",
+                min = rv_input$time_range_start,
+                max = rv_input$time_range_end,
+                step = 1,
+                value = c(rv_input$time_range_start, rv_input$time_range_end)
+        )
+        
+        # Highlighted country input
+        updateSelectInput(
+                inputId = 'gr_rnks_id_highlight_ctry',
+                choices = ctry_choices,
+                selected = ctry_choices[1])
+        
+})
+
+###  Update reactive values to changes in raw data ----
+observeEvent(c(input$in_id_update, input$in_id_reset_confirm),{
+        
+        print("Plots - Rnks [2]: Updating reactive values [changes in raw data]")
+        
+        # Country 
+        aux_ctries <- unique(rv_df$dat_all$Country)
+        rv_rnks$ctries <- aux_ctries
+        
+        # Hightlight country
+        rv_rnks$highlight_ctry <- aux_ctries[1]
+        
+        # Variables (select all variables from new dataset)
+        aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
+        rv_rnks$vars <- aux_var
+        
+        # Time range (select all years of new dataset)
+        aux_year <- c(rv_input$time_range_start, rv_input$time_range_end)
+        rv_rnks$time_range <- aux_year
+        
+}, ignoreInit = TRUE)
+
+###  Update reactive values to changes in rnks plot parameters ----
+
+observeEvent(c(input$gr_rnks_id_update),{
+        
+        print("Plots - Rnks [2]: Updating reactive values [update rnks plot parameters]")
+        
+        # Plot parameters
+        rv_rnks$ctries <- input$gr_rnks_id_ctries
+        rv_rnks$vars <- input$gr_rnks_id_vars
+        rv_rnks$stat <- input$gr_rnks_id_stat
+        rv_rnks$time_range <- input$gr_rnks_id_time_range
+        
+        # Display parameters
+        rv_rnks$title <- input$gr_rnks_id_title
+        rv_rnks$yaxis <- input$gr_rnks_id_yaxis
+        rv_rnks$source <- input$gr_rnks_id_source
+        rv_rnks$data_labels <- input$gr_rnks_id_data_labels
+        rv_rnks$transform_zeros <- input$gr_rnks_id_transform_zeros
+        rv_rnks$transform_log <- input$gr_rnks_id_transform_log
+        rv_rnks$ctry_short <- input$gr_rnks_id_ctry_short
+        rv_rnks$digits <- input$gr_rnks_id_digits
+        rv_rnks$digits_y <- input$gr_rnks_id_digits_y
+        rv_rnks$font <- input$gr_rnks_id_font
+        rv_rnks$color <- input$gr_rnks_id_color
+        rv_rnks$horizontal <- input$gr_rnks_id_horizontal
+        rv_rnks$highlight <- input$gr_rnks_id_highlight
+        rv_rnks$highlight_ctry <- input$gr_rnks_id_highlight_ctry
+
+
+}, ignoreInit = TRUE)
+
+### Plots ----
+
+# Prep data
+prepped_data_rnks <- eventReactive(c(input$in_id_update, input$in_id_reset_confirm, input$gr_rnks_id_update),{
+        
+        print("Plots - Rnks [3]: preparing data")
+        
+        if(nrow(rv_df$dat_all)==0){return()}
+        
+        graph_input <- prep_data_for_graphs(
+                df = rv_df$dat_all,
+                vars = rv_rnks$vars,
+                ctries = rv_rnks$ctries,
+                t_start = rv_rnks$time_range[1],
+                t_end = rv_rnks$time_range[2]
+        )
+        
+        return(graph_input)
+})
+
+# Create plots
+createUI_rnks <- function(table) {
+        
+        rv_plots$rnks_counter <- rv_plots$rnks_counter +1
+        print(paste0("Render rnks plot ", rv_plots$rnks_counter, "/", rv_plots$rnks_counter_total))
+        
+        if(all(is.na(table$Value))){return()}
+        
+        title_text <- ""
+        subtitle_text <- ""
+        yaxis_units <- ""
+        graph_source <- ""
+        
+        # Input for title, subtitle Y-axis and source
+        title_text <- if(rv_rnks$title){unique(table$Var_name)}
+        
+        yaxis_units <- if(rv_rnks$yaxis){
+                if(is.na(unique(table$Units))){NULL} else {unique(table$Units)}
+        }else {NULL}
+        
+        if(rv_rnks$source){
+                graph_source <- unique(table$Database)
+                if(graph_source == "WDI"){
+                        graph_source <- "World Development Indicators"}
+        }
+        
+        # Transform data: divide by trillions/billions/millions/thousands
+        for (i in 4:1){
+                if(rv_rnks$transform_zeros & max(abs(table$Value), na.rm = TRUE)>(10^(3*i))){
+                        if(rv_rnks$title) {
+                                subtitle_text <- paste(
+                                        c(subtitle_text, units_zeros[5 - i]),
+                                        collapse = "")
+                                separator <- if(subtitle_text == ""){""} else {", "}
+                                if(rv_rnks$yaxis){
+                                        yaxis_units <- paste(
+                                                c(yaxis_units, units_zeros[5 - i]),
+                                                collapse = separator)
+                                }
+                        }
+                        table$Value <- table$Value/(10^(3*i))
+                }
+        }
+        
+        # Log transform
+        if(rv_rnks$transform_log & min(table$Value, na.rm = TRUE)>0){
+                subtitle_text <- paste(
+                        c(subtitle_text, " (Log transformation)"),
+                        collapse = "")
+                if(rv_rnks$yaxis){
+                        yaxis_units <- paste(
+                                c(yaxis_units, " (Log transformation)"),
+                                collapse = "")
+                }
+                table$Value <- log(table$Value)
+        }
+        
+        # Calculate variable to plot based on selected stat
+        
+        if(rv_rnks$stat == "Average"){
+                table <- table %>%
+                        group_by(Country) %>%
+                        mutate(sum_value = mean(Value, na.rm=T)) %>%
+                        ungroup()
+                table <- table %>% distinct(Country, .keep_all = TRUE)
+                if(subtitle_text == ""){subtitle_text <- paste(
+                        c(subtitle_text, "Period average"),
+                        collapse = "")}
+                else{subtitle_text <- paste(
+                        c(subtitle_text, ", period average"),
+                        collapse = "")}
+        }
+        
+        if(rv_rnks$stat == "Median"){
+                table <- table %>%
+                        group_by(Country) %>%
+                        mutate(sum_value = median(Value, na.rm=T)) %>%
+                        ungroup()
+                table <- table %>% distinct(Country, .keep_all = TRUE)
+                if(subtitle_text == ""){subtitle_text <- paste(
+                        c(subtitle_text, "Period median"),
+                        collapse = "")}
+                else{subtitle_text <- paste(
+                        c(subtitle_text, ", period median"),
+                        collapse = "")}
+        }
+        
+        if(rv_rnks$stat == "Standard deviation"){
+                table <- table %>%
+                        group_by(Country) %>%
+                        mutate(sum_value = sd(Value, na.rm=T)) %>%
+                        ungroup()
+                table <- table %>% distinct(Country, .keep_all = TRUE)
+                if(subtitle_text == ""){subtitle_text <- paste(
+                        c(subtitle_text, "Period standard deviation"),
+                        collapse = "")}
+                else{subtitle_text <- paste(
+                        c(subtitle_text, ", period standard deviation"),
+                        collapse = "")}
+        }
+        
+        if(rv_rnks$stat == "Maximum"){
+                table <- table %>%
+                        group_by(Country) %>%
+                        mutate(sum_value = my_max_fun(Value)) %>%
+                        ungroup()
+                table <- table %>% distinct(Country, .keep_all = TRUE)
+                if(subtitle_text == ""){subtitle_text <- paste(
+                        c(subtitle_text, "Period maximum"),
+                        collapse = "")}
+                else{subtitle_text <- paste(
+                        c(subtitle_text, ", period maximum"),
+                        collapse = "")}
+        }
+        
+        if(rv_rnks$stat == "Minimum"){
+                table <- table %>%
+                        group_by(Country) %>%
+                        mutate(sum_value =  my_min_fun(Value)) %>%
+                        ungroup()
+                table <- table %>% distinct(Country, .keep_all = TRUE)
+                if(rv_rnks$title){
+                        if(subtitle_text == ""){subtitle_text <- paste(
+                                c(subtitle_text, "Period minimum"),
+                                collapse = "")}
+                        else{subtitle_text <- paste(
+                                c(subtitle_text, ", period minimum"),
+                                collapse = "")}}
+        }
+        
+        if(rv_rnks$stat == "Most recent value"){
+                table <- table[!is.na(table$Value), ]
+                table <- table %>%
+                        group_by(Country) %>%
+                        mutate(sum_value = Value[which.max(Year)]) %>%
+                        ungroup()
+                if(rv_rnks$title){
+                        if(subtitle_text == ""){subtitle_text <- paste(
+                                c(subtitle_text, "Period most recent value"),
+                                collapse = "")}
+                        else{subtitle_text <- paste(
+                                c(subtitle_text, ", period most recent value"),
+                                collapse = "")}}
+        }
+        
+        # Short country names
+        if(rv_rnks$ctry_short){table$Country_aux <- table$Ctry_iso}else{table$Country_aux <- table$Country}
+        
+        # Title
+        title_text_paragraph <- str_wrap(title_text, width = 130)
+        
+        # Sort
+        if(rv_rnks$horizontal){table <- table[order(table$sum_value), ]}else{table <- table[order(-table$sum_value), ] }
+        
+        table$Country_aux <- factor(table$Country_aux, levels = table$Country_aux)
+        
+        # Ball sizes
+        ballsize <- 6
+        if(length(table$Country_aux)>50){ballsize <- 5}
+        if(length(table$Country_aux)>100){ballsize <- 4}
+        if(length(table$Country_aux)>150){ballsize <- 3}
+        
+        # Include years in subtitle if no sub-periods
+        if(rv_rnks$title){
+                subtitle_text <- paste(
+                        c(subtitle_text, " (", rv_rnks$time_range[1], "-", rv_rnks$time_range[2], ")"),
+                        collapse = "")
+        }
+        
+        # THIS WILL CREATE PROBLEMS EVENTUALLY! SO FAR IT WORKS THOUGH, WITH A WARNING...
+        # Warning: Vectorized input to `element_text()` is not officially supported.
+        # Vectorized input to `element_text()` is not officially supported.
+        if(rv_rnks$highlight){
+                aux_table <- subset(table, !is.na(sum_value))
+                color_ball <- ifelse(aux_table$Country == rv_rnks$highlight_ctry, "tomato2", "grey")
+                face_text_label <- ifelse(aux_table$Country == rv_rnks$highlight_ctry, "bold", "plain")
+                size_text_label <- ifelse(aux_table$Country == rv_rnks$highlight_ctry, 14, 10)
+        }else{
+                aux_table <- subset(table, !is.na(sum_value))
+                color_ball <- "tomato2"
+                face_text_label <- "plain"
+                size_text_label <- 10
+        }
+        
+
+
+        # Actually create plot
+        p <- ggplot(data = subset(table, !is.na(sum_value)),
+                aes(x = Country_aux,
+                        y = sum_value)
+                )+
+                geom_segment(aes(x=Country_aux, 
+                        xend=Country_aux, 
+                        y=min(sum_value), 
+                        yend=max(sum_value)), 
+                        linetype="dashed", 
+                        size=0.1) +
+                geom_point(col=color_ball, size=ballsize) +
+                labs(title = title_text_paragraph,
+                        subtitle = subtitle_text,
+                        caption = if(rv_rnks$source){paste("Source: ", graph_source, ".", sep="")},
+                        y = if(rv_rnks$horizontal & rv_rnks$yaxis){NULL} else {yaxis_units},
+                        x = if(rv_rnks$horizontal & rv_rnks$yaxis){yaxis_units} else {NULL},
+                )+
+                theme(panel.background = element_rect(fill=NA),
+                        panel.border = element_blank(),
+                        panel.grid.major.x = element_blank(),
+                        panel.grid.major.y = element_blank(),
+                        panel.grid.minor = element_blank(),
+                        plot.title = element_text(size = 12, face = "bold"),
+                        plot.margin = margin(0.25, 0.25, 1, 0.25, "cm"),
+                        plot.caption = element_text(hjust = 0, size = 10),
+                        axis.ticks.x = element_blank(),
+                        axis.ticks.y = element_blank(),
+                        axis.text.x = if(!rv_rnks$horizontal & rv_rnks$yaxis){element_text(angle = 90, vjust = 0.5, hjust=1, colour = "black", face = face_text_label, size = size_text_label)} else {element_text(vjust = 0.5, hjust=0.5, colour = "black")}, 
+                        axis.text.y = if(!rv_rnks$horizontal & rv_rnks$yaxis){element_text(colour = "black")}else{element_text(colour = "black", face = face_text_label, size = size_text_label)},
+                        text = element_text(size = 12, family = rv_rnks$font),
+                        legend.title = element_blank(),
+                        axis.title.y = element_text()
+                )
+        
+        if(rv_rnks$horizontal){p <- p + coord_flip()}
+                
+        # Append plot to the list of plots
+        rv_plots$rnks <- isolate(list.append(rv_plots$rnks, p))
+        
+        # Append data
+        # # Transform Period_num back to numeric
+        table$Value <- table$sum_value
+        table$Title <- title_text
+        table$Subtitle <- subtitle_text
+        table$Y_axis <- yaxis_units
+        table$Source <- graph_source
+
+        # Select columns
+
+        table <- table %>% select(c("Var_name", "Var_code", "Units", "Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year", "Value", "Database", "Title", "Subtitle", "Y_axis", "Source"))
+        
+        rv_plots$rnks_data <- isolate(list.append(rv_plots$rnks_data, table))
+        
+        # Show plot
+        renderPlot(p)
+        
+}
+
+# Call Prep data and Create plots
+output$gr_rnks_out_plots <- renderUI({
+        
+        print("****************************")
+        print("Plots - Rnks: start renderUI")
+        
+        rv_plots$rnks <- list()
+        rv_plots$rnks_data <- list()
+        
+        pd <- req(prepped_data_rnks())
+        
+        rv_plots$rnks_counter <- 0
+        rv_plots$rnks_counter_total <- length(isolate(pd))
+        
+        final <- isolate(tagList(map(pd, ~ createUI_rnks(.))))
+        
+        print("Plots - Rnks: finish renderUI")
+        print("****************************")
+        cat("\n")
+        
+        return(final)
+})
+
+### Plots download handlers ----
+
+# Download plots as png zipped - large
+output$gr_rnks_download_large <- downloadHandler(
+        filename = 'gr_rnks_plots_large.zip',
+        content = function(file){
+                
+                # Set temporary working directory
+                owd <- setwd(tempdir())
+                on.exit(setwd(owd))
+                
+                # Save the plots
+                vector_plots <- vector()
+                
+                for (i in 1:length(rv_plots$rnks)){
+                        
+                        name <- paste("rnksplot_large", i, ".png", sep="")
+                        ggsave(name,
+                                plot = rv_plots$rnks[[i]],
+                                device = "png",
+                                width = 11.5,
+                                height = 5.75,
+                                units = "in")
+                        vector_plots <- c(vector_plots, paste("rnksplot_large", i, ".png", sep=""))
+                        
+                        name_data <- paste("rnksplot_large_data", i, ".csv", sep = "")
+                        write.csv(rv_plots$rnks_data[[i]], name_data, row.names = FALSE)
+                        vector_plots <- c(vector_plots, paste("rnksplot_large_data", i, ".csv", sep = ""))
+                        
+                }
+                
+                # Zip them up
+                zip( file, vector_plots)
+        }
+)
+
+# Download plots as png zipped - small
+output$gr_rnks_download_small <- downloadHandler(
+        filename = 'gr_rnks_plots_small.zip',
+        content = function(file){
+                
+                # Set temporary working directory
+                owd <- setwd(tempdir())
+                on.exit(setwd(owd))
+                
+                # Save the plots
+                vector_plots <- vector()
+                for (i in 1:length(rv_plots$rnks)){
+                        
+                        name <- paste("rnksplot_small", i, ".png", sep="")
+                        ggsave(name,
+                                plot = rv_plots$rnks[[i]],
+                                device = "png",
+                                width = 5.75,
+                                height = 5.75,
+                                units = "in")
+                        vector_plots <- c(vector_plots, paste("rnksplot_small", i, ".png", sep=""))
+                        
+                        name_data <- paste("rnksplot_small_data", i, ".csv", sep = "")
+                        write.csv(rv_plots$rnks_data[[i]], name_data, row.names = FALSE)
+                        vector_plots <- c(vector_plots, paste("rnksplot_small_data", i, ".csv", sep = ""))
+                        
+                }
+                
+                # Zip them up
+                zip(file, vector_plots)
+        }
+)
+
+##************************************************************************************************** ----        
+        
         ## Scatter plots ----
 
         # Reactive values for scatter
@@ -8272,7 +9796,7 @@ server <- function(input, output, session) {
                                                         pickerInput(
                                                                 inputId = paste0('gr_scat_id_stat_x_', i),
                                                                 label = "",
-                                                                choices = stats_vec,
+                                                                choices = stats_vec[1:6],
                                                                 select = eval(parse(text = paste0('rv_scat$stat_x', i))),
                                                                 multiple = FALSE
                                                         )
@@ -8281,7 +9805,7 @@ server <- function(input, output, session) {
                                                         pickerInput(
                                                                 inputId = paste0('gr_scat_id_stat_y_', i),
                                                                 label = "",
-                                                                choices = stats_vec,
+                                                                choices = stats_vec[1:6],
                                                                 select = eval(parse(text = paste0('rv_scat$stat_y', i))),
                                                                 multiple = FALSE
                                                         )
@@ -8299,6 +9823,9 @@ server <- function(input, output, session) {
 
                 # Country (if previously selected country is in new dataset, keep selection, else select first country from vector)
                 rv_scat$ctries <- unique(rv_df$dat_all$Country)
+                
+                # Hightlight country
+                rv_scat$highlight_ctry <- unique(rv_df$dat_all$Country)[1]
 
                 # Time range (select all years of new dataset)
                 aux_year <- c(rv_input$time_range_start, rv_input$time_range_end)
