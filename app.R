@@ -1141,8 +1141,16 @@ multiline_text_fun <- function(
 load_help_text_group <- bs_modal(
         id = "help_text_group",
         title = "Country group selection",
-        body = tags$p("All countries belonging to at least one of the groups selected will be included."),
+        body = tags$p("All countries belonging to at least one of the groups selected will be included. You can check the classifications in the 'Countries/aggregates WDI' tab."),
         size = "medium")
+
+# Help text for country groups
+load_help_text_var <- bs_modal(
+        id = "help_text_var",
+        title = "WDI variables",
+        body = tags$div("WDI variables are retrieved using the", tags$a(href="https://vincentarelbundock.github.io/WDI/", "WDI package"), "developed by Vincent Arel-Bundock. This package allows to search and download data from over 40 databases hosted by the World Bank, including the World Development Indicators ('WDI'), International Debt Statistics, Doing Business, Human Capital Index, and Sub-national Poverty indicators. You can ckeck the over 17,000 variables available in the 'WDI variables' tab."),
+        size = "medium")
+
 
 # Help text for upload data
 load_help_text <- bs_modal(
@@ -1184,6 +1192,7 @@ ui <- shinyUI(
                 
                 # Load modals
                 load_help_text_group,
+                load_help_text_var,
                 load_help_text,
                 load_palette,
                 
@@ -1431,7 +1440,11 @@ ui <- shinyUI(
                                                                 label = "WDI variables (Name | Code)",
                                                                 choices = NULL,
                                                                 multiple = TRUE,
-                                                                options = list(maxOptions = 100))
+                                                                options = list(maxOptions = 100))%>%
+                                                                shinyInput_label_embed(
+                                                                        shiny_iconlink() %>%
+                                                                                bs_attach_modal(id_modal = "help_text_var")
+                                                                )
                                                         
                                                         # Input: IMF variables
                                                         # selectizeInput(
@@ -1464,33 +1477,37 @@ ui <- shinyUI(
                                                         # Output: Table
                                                         tabPanel("Table",
                                                                 
+                                                                # Data download button
+                                                                tags$br(),
+                                                                downloadButton("out_download_data", 
+                                                                        "Download data"),
+                                                                
                                                                 # Table 1: data
+                                                                tags$br(),
                                                                 tags$br(),
                                                                 dataTableOutput("out_data_table") %>% withSpinner(
                                                                         type = 3, 
                                                                         color = def_list_data$col_spinner, 
-                                                                        color.background = "white"),
+                                                                        color.background = "white")
                                                                 
-                                                                # Data download button
-                                                                tags$br(),
-                                                                downloadButton("out_download_data", 
-                                                                        "Download data")
                                                         ),
                                                         
                                                         # Output: Metadata
                                                         tabPanel("Metadata",
                                                                 
+                                                                # Data download button
+                                                                tags$br(),
+                                                                downloadButton("out_download_metadata", 
+                                                                        "Download metadata"),
+                                                                
                                                                 # Table 2: metadata
+                                                                tags$br(),
                                                                 tags$br(),
                                                                 dataTableOutput("out_metadata_table") %>% withSpinner(
                                                                         type = 3, 
                                                                         color = def_list_data$col_spinner, 
-                                                                        color.background = "white"),
-                                                                
-                                                                # Data download button
-                                                                tags$br(),
-                                                                downloadButton("out_download_metadata", 
-                                                                        "Download metadata")
+                                                                        color.background = "white")
+
                                                         ),
                                                         
                                                         # Output: Summary
@@ -1512,18 +1529,36 @@ ui <- shinyUI(
                                                         # Output: Country table
                                                         tabPanel("Countries/aggregates WDI",
                                                                 
+                                                                # Download button
+                                                                tags$br(),
+                                                                downloadButton("out_download_ctry_df", 
+                                                                        "Download countries/aggregates"),
+                                                                
+                                                                # Countries' table
                                                                 tags$br(),
                                                                 h4("Countries"),
                                                                 dataTableOutput("out_ctry_df"),
                                                                 
+                                                                # Aggregates' table
                                                                 tags$br(),
                                                                 h4("Aggregates"),
-                                                                dataTableOutput("out_ctry_df_agg"),
+                                                                dataTableOutput("out_ctry_df_agg")
+                                                                
+
+                                                        ),
+                                                        
+                                                        # Output: WDI variables
+                                                        tabPanel("WDI variables",
                                                                 
                                                                 # Download button
                                                                 tags$br(),
-                                                                downloadButton("out_download_ctry_df", 
-                                                                        "Download")
+                                                                downloadButton("out_download_var_df", 
+                                                                        "Download variables"),
+                                                                
+                                                                # Variables' table
+                                                                tags$br(),
+                                                                tags$br(),
+                                                                dataTableOutput("out_var_df")
                                                                 
                                                         )
                                                 )
@@ -3500,9 +3535,7 @@ server <- function(input, output, session) {
                         inputId = 'in_id_wdi_vars',
                         selected = def_list_data$wdi_vars,
                         choices = var_vec,
-                        server = FALSE
-                )
-                
+                        server = FALSE)
         })
 
 
@@ -4759,6 +4792,47 @@ server <- function(input, output, session) {
                 },
                 content = function(file) {
                         write.csv(rv_df$country_list, file, row.names = FALSE)
+                }
+        )
+        
+        # Render variables table        
+        output$out_var_df <- renderDataTable({
+                
+                cat("\n")
+                print("****************************")
+                print("Variables - table: start renderUI")
+                
+                aux <- var_df
+                names(aux)[names(aux) == 'indicator'] <- 'Var_code'
+                names(aux)[names(aux) == 'name'] <- 'Var_name'
+                names(aux)[names(aux) == 'description'] <- 'Description'
+                names(aux)[names(aux) == 'sourceDatabase'] <- 'Source_data'
+                names(aux)[names(aux) == 'sourceOrganization'] <- 'Source_org'
+                
+                aux <- aux %>% select(Var_name, Var_code, Description, Source_data, Source_org)
+                rv_df$vars_WDI <- aux
+                
+                torender <- datatable(rv_df$vars_WDI,
+                        rownames = FALSE,
+                        options = list(pageLength = 15,
+                                columnDefs = list( list(className = 'dt-left', targets = "_all")),
+                                scrollX = T)
+                )
+                
+                print("Variables - table: end renderUI")
+                print("****************************")
+                cat("\n")
+                
+                return(torender)
+        })
+        
+        # Download countries
+        output$out_download_var_df <- downloadHandler(
+                filename = function() {
+                        paste('variables_WDI', '.csv', sep='')
+                },
+                content = function(file) {
+                        write.csv(rv_df$vars_WDI, file, row.names = FALSE)
                 }
         )
 
