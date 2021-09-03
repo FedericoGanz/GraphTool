@@ -835,7 +835,7 @@ def_list_mult <- list(
         font = "Calibri",
         color_pal = "Oranges",
         color = "#EC7063",
-        legend_pos = "top"
+        legend_pos = position_list
 
 )
 
@@ -5505,11 +5505,10 @@ server <- function(input, output, session) {
                 rv_plots$bar <- isolate(list.append(rv_plots$bar, p))
                 
                 # Append data
-                
-                table$Title <- title_text
-                table$Subtitle <- subtitle_text
-                table$Y_axis <- yaxis_units
-                table$Source <- graph_source
+                table$Title <- if(rv_bar$title){title_text}else{""} 
+                table$Subtitle <- if(rv_bar$title){subtitle_text}else{""} 
+                table$Y_axis <- if(rv_bar$yaxis){yaxis_units}else{""}
+                table$Source <- if(rv_bar$source){graph_source}else{""}
 
                 # Select columns
                 table <- table %>% select(c("Var_name", "Var_code", "Units", "Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year", "Period", "Period_num", "Value", "Database", "Title", "Subtitle", "Y_axis", "Source"))
@@ -6135,7 +6134,7 @@ server <- function(input, output, session) {
                                         p <- p + scale_fill_brewer(palette = rv_mult$color_pal)
                                 }
                                 
-                                p <- p + theme(legend.position = rv_mult$legend_pos)
+                                p <- p + theme(legend.position = rv_mult$legend_pos[[1]])
 
 
                         } else {p <- p + theme(legend.position = "none")}
@@ -6263,10 +6262,10 @@ server <- function(input, output, session) {
                         }
                 }
                 
-                table$Title <- title_text
-                table$Subtitle <- subtitle_text
-                table$Y_axis <- yaxis_units
-                table$Source <- graph_source
+                table$Title <- if(rv_mult$title){title_text}else{""} 
+                table$Subtitle <- if(rv_mult$title){subtitle_text}else{""} 
+                table$Y_axis <- if(rv_mult$yaxis){yaxis_units}else{""}
+                table$Source <- if(rv_mult$source){graph_source}else{""}
                 table$Period <- table$Period_aux
 
                 # Select columns
@@ -6792,7 +6791,7 @@ server <- function(input, output, session) {
                                 colour = "black", 
                                 na.rm = TRUE) +
                         scale_fill_brewer(palette=rv_stas$color, labels = legend_labels) +
-                        theme(legend.position = rv_stas$legend_pos)+
+
                         
                         # Include title, subtitle, source and Y-axis title
                         labs(title = title_text_paragraph,
@@ -6823,7 +6822,9 @@ server <- function(input, output, session) {
                                         rv_stas$time_range[2],
                                         by = intervals)
                         )+
-                        coord_cartesian(xlim = c(rv_stas$time_range[1], rv_stas$time_range[2]))
+                        coord_cartesian(xlim = c(rv_stas$time_range[1], rv_stas$time_range[2])) +
+                        # Legend position
+                        theme(legend.position = rv_stas$legend_pos[[1]])
 
                 # Include data labels
                 if(rv_stas$data_labels){p <- p +
@@ -7020,10 +7021,10 @@ server <- function(input, output, session) {
                 rv_plots$stas <- list.append(rv_plots$stas, p)
                 
                 # Append data
-                table$Title <- title_text
-                table$Subtitle <- subtitle_text
-                table$Y_axis <- yaxis_units
-                table$Source <- graph_source
+                table$Title <- if(rv_stas$title){title_text}else{""} 
+                table$Subtitle <- if(rv_stas$title){subtitle_text}else{""} 
+                table$Y_axis <- if(rv_stas$yaxis){yaxis_units}else{""}
+                table$Source <- if(rv_stas$source){graph_source}else{""}
 
                 # Select columns
                 table <- table %>% select(c("Var_name", "Var_code", "Units", "Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year", "Period", "Period_num", "Value", "Database", "Title", "Subtitle", "Y_axis", "Source"))
@@ -7737,7 +7738,7 @@ server <- function(input, output, session) {
                         ) +
                         
                         # Legend position
-                        theme(legend.position = rv_stam$legend_pos)
+                        theme(legend.position = rv_stam$legend_pos[[1]])
                 
                         # Include time subperiods
                         if(rv_input$time_subper){
@@ -7968,11 +7969,10 @@ server <- function(input, output, session) {
                                 }
                         }
                 }
-                
-                table$Title <- title_text
-                table$Subtitle <- subtitle_text
-                table$Y_axis <- yaxis_units
-                table$Source <- graph_source
+                table$Title <- if(rv_stam$title){title_text}else{""} 
+                table$Subtitle <- if(rv_stam$title){subtitle_text}else{""} 
+                table$Y_axis <- if(rv_stam$yaxis){yaxis_units}else{""}
+                table$Source <- if(rv_stam$source){graph_source}else{""}
                 
                 # Select columns
                 table <- table %>% select(c("Var_name", "Var_code", "Units", "Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Years", "Period", "Period_num", "Value", "Database", "Title", "Subtitle", "Y_axis", "Source" ))
@@ -8634,10 +8634,10 @@ server <- function(input, output, session) {
                 rv_plots$line <- isolate(list.append(rv_plots$line, p))
                 
                 # Append data
-                table$Title <- title_text
-                table$Subtitle <- subtitle_text
-                table$Y_axis <- yaxis_units
-                table$Source <- graph_source
+                table$Title <- if(rv_line$title){title_text}else{""} 
+                table$Subtitle <- if(rv_line$title){subtitle_text}else{""} 
+                table$Y_axis <- if(rv_line$yaxis){yaxis_units}else{""}
+                table$Source <- if(rv_line$source){graph_source}else{""}
                 
                 # Select columns
                 table <- table %>% select(c("Var_name", "Var_code", "Units", "Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year", "Period", "Period_num", "Value", "Database", "Title", "Subtitle", "Y_axis", "Source"))
@@ -9147,7 +9147,10 @@ createUI_linm <- function(table) {
                 )+
                 scale_shape(labels = legend_labels)+
                 coord_cartesian(xlim = c(rv_linm$time_range[1], rv_linm$time_range[2]))+
-                scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.9)
+                scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.9)+
+                
+                # Legend position
+                theme(legend.position = rv_linm$legend_pos[[1]])
         
 
         
@@ -9255,10 +9258,10 @@ createUI_linm <- function(table) {
         rv_plots$linm <- list.append(rv_plots$linm, p)
         
         # Append data
-        table$Title <- title_text
-        table$Subtitle <- subtitle_text
-        table$Y_axis <- yaxis_units
-        table$Source <- graph_source
+        table$Title <- if(rv_linm$title){title_text}else{""} 
+        table$Subtitle <- if(rv_linm$title){subtitle_text}else{""} 
+        table$Y_axis <- if(rv_linm$yaxis){yaxis_units}else{""}
+        table$Source <- if(rv_linm$source){graph_source}else{""}
         
         # Select columns
         table <- table %>% select(c("Var_name", "Var_code", "Units", "Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year", "Period", "Period_num", "Value", "Database", "Title", "Subtitle", "Y_axis", "Source"))
@@ -9800,10 +9803,10 @@ createUI_rnkt <- function(table) {
         rv_plots$rnkt <- isolate(list.append(rv_plots$rnkt, p))
         
         # Append data
-        table$Title <- title_text
-        table$Subtitle <- subtitle_text
-        table$Y_axis <- yaxis_units
-        table$Source <- graph_source
+        table$Title <- if(rv_rnkt$title){title_text}else{""} 
+        table$Subtitle <- if(rv_rnkt$title){subtitle_text}else{""} 
+        table$Y_axis <- if(rv_rnkt$yaxis){yaxis_units}else{""}
+        table$Source <- if(rv_rnkt$source){graph_source}else{""}
         table$Descending <- rv_rnkt$descending
 
         # Select columns
@@ -10319,10 +10322,10 @@ createUI_rnks <- function(table) {
         # Append data
         # # Transform Period_num back to numeric
         table$Value <- table$sum_value
-        table$Title <- title_text
-        table$Subtitle <- subtitle_text
-        table$Y_axis <- yaxis_units
-        table$Source <- graph_source
+        table$Title <- if(rv_rnks$title){title_text}else{""} 
+        table$Subtitle <- if(rv_rnks$title){subtitle_text}else{""} 
+        table$Y_axis <- if(rv_rnks$yaxis){yaxis_units}else{""}
+        table$Source <- if(rv_rnks$source){graph_source}else{""}
 
         # Select columns
 
