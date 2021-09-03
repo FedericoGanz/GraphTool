@@ -927,6 +927,35 @@ def_list_line <- list(
 
 )
 
+def_list_linm <- list(
+        
+        # Plot parameters
+        ctries = c(def_list_data$ctries_ctry , def_list_data$ctries_str , def_list_data$ctries_asp , def_list_data$ctries_reg)[c(1,10)],
+        time_range = c(def_list_data$time_range_start, def_list_data$time_range_end),
+
+        # Individual plot parameters
+        plot_num = 1,
+        vars = c("Exports of goods and services (% of GDP) | NE.EXP.GNFS.ZS",
+                "Imports of goods and services (% of GDP) | NE.IMP.GNFS.ZS"),
+        title_text = "Trade",
+        yaxis_text = "Percent of GDP", 
+
+        # Display parameters
+        title = TRUE,
+        yaxis = TRUE,
+        source = TRUE,
+        data_labels = FALSE,
+        time_subper = TRUE,
+        transform_zeros = TRUE,
+        transform_log = FALSE,
+        ctry_short = FALSE,
+        digits = 0,
+        digits_y = 0,
+        font = "Calibri",
+        legend_pos = "right"
+        
+)
+
 def_list_rnkt <- list(
         
         # Plot parameters
@@ -2277,12 +2306,12 @@ ui <- shinyUI(
                                                                         label = "Number of plots",
                                                                         min = 1,
                                                                         value = def_list_stam$plot_num
-                                                                ),
+                                                                )
 
-                                                                # Individual plot panels
-                                                                uiOutput("gr_stam_id_input_panels"),
-                                                                
                                                         ),
+                                                        
+                                                        # Individual plot panels
+                                                        uiOutput("gr_stam_id_input_panels"),
                                                         
                                                         wellPanel( 
                                                                 
@@ -2428,230 +2457,430 @@ ui <- shinyUI(
                                 )
                         ),
                         
-                        tabPanel(title = "Line plots",
+                        navbarMenu(title = "Line plots",
                                 
-                                br(),
-                                br(),
-                                br(),
-                                br(),
-                                br(),
+                                tabPanel(title = "Single Variable",
+                                                
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),        
                                 
-                                sidebarLayout(
+                                        sidebarLayout(
+                                                
+                                                sidebarPanel(
+                                                        
+                                                        actionButtonStyled(
+                                                                inputId = "gr_line_id_update",
+                                                                label = "Update plots",
+                                                                icon = NULL,
+                                                                width = NULL,
+                                                                btn_type = "btn-sm",
+                                                                type = "success"),
+                                                        
+                                                        tags$br(),
+                                                        tags$p(),
+                                                        
+                                                        wellPanel(
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                h4("Plot parameters"),
+                                                                
+                                                                # Select countries/aggregates
+                                                                pickerInput(
+                                                                        inputId = "gr_line_id_ctries",
+                                                                        label = "Select countries/aggregates", 
+                                                                        choices = c(""),
+                                                                        options = list(size = 15,
+                                                                                `actions-box` = TRUE),
+                                                                        multiple = TRUE
+                                                                ),
+                                                                
+                                                                # Select variables
+                                                                pickerInput(
+                                                                        inputId = "gr_line_id_vars",
+                                                                        label = "Select variables", 
+                                                                        choices = c(""),
+                                                                        options = list(size = 15,
+                                                                                `actions-box` = TRUE),
+                                                                        multiple = TRUE
+                                                                ),
+                                                                
+                                                                # Select range
+                                                                sliderInput(
+                                                                        inputId = "gr_line_id_time_range",
+                                                                        label = "Select range",
+                                                                        sep = "",
+                                                                        min = def_list_line$time_range[1],
+                                                                        max = def_list_line$time_range[2],
+                                                                        step = 1,
+                                                                        value = c(def_list_line$time_range[1], def_list_line$time_range[2])
+                                                                )
+                                                                
+                                                        ),
+                                                        
+                                                        wellPanel( 
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                h4("Display options"),
+                                                                
+                                                                # Include title
+                                                                materialSwitch(
+                                                                        inputId = "gr_line_id_title",
+                                                                        label = "Include title",
+                                                                        value = def_list_line$title,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include Y-axis units
+                                                                materialSwitch(
+                                                                        inputId = "gr_line_id_yaxis",
+                                                                        label = "Include Y-axis units",
+                                                                        value = def_list_line$yaxis,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include source
+                                                                materialSwitch(
+                                                                        inputId = "gr_line_id_source",
+                                                                        label = "Include source",
+                                                                        value = def_list_line$source,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include data labels
+                                                                materialSwitch(
+                                                                        inputId = "gr_line_id_data_labels",
+                                                                        label = "Include data labels",
+                                                                        value = def_list_line$data_labels,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include subperiods
+                                                                conditionalPanel(
+                                                                        condition = "input.in_id_time_subper == true",
+                                                                        materialSwitch (
+                                                                                inputId = "gr_line_id_time_subper",
+                                                                                label = "Include subperiods",
+                                                                                value = def_list_line$time_subper,
+                                                                                status = "primary",
+                                                                                right = TRUE)
+                                                                ),
+                                                                
+                                                                # Transform data to Trillion/Billion/Million/Thousands
+                                                                materialSwitch(
+                                                                        inputId = "gr_line_id_transform_zeros",
+                                                                        label = "Transform data to Trillion/Billion/Million/Thousands",
+                                                                        value = def_list_line$transform_zeros,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Transform data to logs (applies only to positive series)
+                                                                materialSwitch(
+                                                                        inputId = "gr_line_id_transform_log",
+                                                                        label = "Transform data to logs (applies only to positive series)",
+                                                                        value = def_list_line$transform_log,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Change country names to short
+                                                                materialSwitch(
+                                                                        inputId = "gr_line_id_ctry_short",
+                                                                        label = "Short country names (ISO 3)",
+                                                                        value = def_list_line$ctry_short,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Number of digits
+                                                                numericInput(
+                                                                        inputId = "gr_line_id_digits",
+                                                                        label = "Number of digits in labels",
+                                                                        min = 0,
+                                                                        value = def_list_line$digits
+                                                                ),
+                                                                
+                                                                # Number of digits Y-axis
+                                                                numericInput(
+                                                                        inputId = "gr_line_id_digits_y",
+                                                                        label = "Number of digits in Y-axis",
+                                                                        min = 0,
+                                                                        value = def_list_line$digits_y
+                                                                ),
+                                                                
+                                                                # Select font
+                                                                pickerInput(
+                                                                        inputId = "gr_line_id_font",
+                                                                        label = "Select font",
+                                                                        choices = font_list,
+                                                                        selected = def_list_line$font,
+                                                                        choicesOpt = list(
+                                                                                content = c("<div style='font-family: Calibri'>Calibri</div>", 
+                                                                                        "<div style='font-family: sans'>Arial</div>", 
+                                                                                        "<div style='font-family: mono'>Courier</div>", 
+                                                                                        "<div style='font-family: serif'>TimesNewRoman</div>"))
+                                                                ),
+                                                                
+                                                                # Select highlighted country/aggregate and color
+                                                                materialSwitch(
+                                                                        inputId = "gr_line_id_highlight",
+                                                                        label = "Highlight a country/aggregate",
+                                                                        value = def_list_line$highlight,
+                                                                        status = "primary",
+                                                                        right = TRUE),
+                                                                
+                                                                conditionalPanel(
+                                                                        condition = "input.gr_line_id_highlight == true",
+                                                                        
+                                                                        # Input: Country of analysis
+                                                                        selectInput(
+                                                                                inputId = "gr_line_id_highlight_ctry",
+                                                                                label = "Select highlighted country/aggregate",
+                                                                                choices = c(""),
+                                                                                selected = "input.ctry"),
+                                                                        
+                                                                        # Input: Line plot color
+                                                                        colourpicker::colourInput(
+                                                                                inputId ="gr_line_id_highlight_color", 
+                                                                                label = "Select colors of highlighted line", 
+                                                                                value = def_list_line$highlight_color,
+                                                                                allowTransparent = TRUE,
+                                                                                closeOnClick = TRUE),
+                                                                )
+                                                        )
+                                                ),
+                                                
+                                                mainPanel(
+                                                        
+                                                        # Download graphs options
+                                                        helpText("Download zip file with plots and underlying data (select plot size)"),
+                                                        downloadButton("gr_line_download_large", "Long Plots"),
+                                                        downloadButton("gr_line_download_small", "Small Plots"),
+                                                        tags$br(),
+                                                        tags$br(),
+                                                        
+                                                        # Plots' dynamic UI
+                                                        tags$br(),
+                                                        uiOutput("gr_line_out_plots") %>% withSpinner(type = 3, 
+                                                                color = def_list_data$col_spinner, 
+                                                                color.background = "white"),
+                                                        
+                                                )
+                                        )
+                                ),
+                                tabPanel(title = "Multiple Variables",
                                         
-                                        sidebarPanel(
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        br(),
+                                        
+                                        sidebarLayout(
                                                 
-                                                actionButtonStyled(
-                                                        inputId = "gr_line_id_update",
-                                                        label = "Update plots",
-                                                        icon = NULL,
-                                                        width = NULL,
-                                                        btn_type = "btn-sm",
-                                                        type = "success"),
-                                                
-                                                tags$br(),
-                                                tags$p(),
-                                                
-                                                wellPanel(
+                                                sidebarPanel(
                                                         
-                                                        style = "background-color: #ebf5fb",
+                                                        actionButtonStyled(
+                                                                inputId = "gr_linm_id_update",
+                                                                label = "Update plots",
+                                                                icon = NULL,
+                                                                width = NULL,
+                                                                btn_type = "btn-sm",
+                                                                type = "success"),
                                                         
-                                                        h4("Plot parameters"),
+                                                        tags$br(),
+                                                        tags$p(),
                                                         
-                                                        # Select countries/aggregates
-                                                        pickerInput(
-                                                                inputId = "gr_line_id_ctries",
-                                                                label = "Select countries/aggregates", 
-                                                                choices = c(""),
-                                                                options = list(size = 15,
-                                                                        `actions-box` = TRUE),
-                                                                multiple = TRUE
+                                                        wellPanel( 
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                h4("Plot parameters"),
+                                                                
+                                                                # Select countries
+                                                                pickerInput(
+                                                                        inputId = "gr_linm_id_ctries",
+                                                                        label = "Select countries/aggregates", 
+                                                                        choices = c(""),
+                                                                        options = list(size = 15,
+                                                                                `actions-box` = TRUE),
+                                                                        multiple = TRUE
+                                                                ),
+                                                                
+                                                                # Select range
+                                                                sliderInput(
+                                                                        inputId = "gr_linm_id_time_range",
+                                                                        label = "Select range",
+                                                                        sep = "",
+                                                                        min = def_list_linm$time_range[1],
+                                                                        max = def_list_linm$time_range[2],
+                                                                        step = 1,
+                                                                        value = c(def_list_linm$time_range[1], def_list_linm$time_range[2])
+                                                                ),
+
+                                                                # Define number of plots
+                                                                numericInput(
+                                                                        inputId = "gr_linm_id_plot_num",
+                                                                        label = "Number of plots",
+                                                                        min = 1,
+                                                                        value = def_list_linm$plot_num
+                                                                )
+                                                                
                                                         ),
                                                         
-                                                        # Select variables
-                                                        pickerInput(
-                                                                inputId = "gr_line_id_vars",
-                                                                label = "Select variables", 
-                                                                choices = c(""),
-                                                                options = list(size = 15,
-                                                                        `actions-box` = TRUE),
-                                                                multiple = TRUE
-                                                        ),
+                                                        # Individual plot panels
+                                                        uiOutput("gr_linm_id_input_panels"),
                                                         
-                                                        # Select range
-                                                        sliderInput(
-                                                                inputId = "gr_line_id_time_range",
-                                                                label = "Select range",
-                                                                sep = "",
-                                                                min = def_list_line$time_range[1],
-                                                                max = def_list_line$time_range[2],
-                                                                step = 1,
-                                                                value = c(def_list_line$time_range[1], def_list_line$time_range[2])
+                                                        wellPanel( 
+                                                                
+                                                                style = "background-color: #ebf5fb",
+                                                                
+                                                                h4("Display options"),
+                                                                
+                                                                # Include title
+                                                                materialSwitch(
+                                                                        inputId = "gr_linm_id_title",
+                                                                        label = "Include title",
+                                                                        value = def_list_linm$title,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include Y-axis units
+                                                                materialSwitch(
+                                                                        inputId = "gr_linm_id_yaxis",
+                                                                        label = "Include Y-axis units",
+                                                                        value = def_list_linm$yaxis,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include source
+                                                                materialSwitch(
+                                                                        inputId = "gr_linm_id_source",
+                                                                        label = "Include source",
+                                                                        value = def_list_linm$source,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include data labels
+                                                                materialSwitch(
+                                                                        inputId = "gr_linm_id_data_labels",
+                                                                        label = "Include data labels",
+                                                                        value = def_list_linm$data_labels,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Include subperiods
+                                                                conditionalPanel(
+                                                                        condition = "input.in_id_time_subper == true",
+                                                                        materialSwitch (
+                                                                                inputId = "gr_linm_id_time_subper",
+                                                                                label = "Include subperiods",
+                                                                                value = def_list_linm$time_subper,
+                                                                                status = "primary",
+                                                                                right = TRUE),
+                                                                ),
+                                                                
+                                                                # Transform data to Trillion/Billion/Million/Thousands
+                                                                materialSwitch(
+                                                                        inputId = "gr_linm_id_transform_zeros",
+                                                                        label = "Transform data to Trillion/Billion/Million/Thousands",
+                                                                        value = def_list_linm$transform_zeros,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Transform data to logs (applies only to positive series)
+                                                                materialSwitch(
+                                                                        inputId = "gr_linm_id_transform_log",
+                                                                        label = "Transform data to logs (applies only to positive series)",
+                                                                        value = def_list_linm$transform_log,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Change country names to short
+                                                                materialSwitch(
+                                                                        inputId = "gr_linm_id_ctry_short",
+                                                                        label = "Short country names (ISO 3)",
+                                                                        value = def_list_linm$ctry_short,
+                                                                        status = "primary",
+                                                                        right = TRUE
+                                                                ),
+                                                                
+                                                                # Number of digits
+                                                                numericInput(
+                                                                        inputId = "gr_linm_id_digits",
+                                                                        label = "Number of digits in labels",
+                                                                        min = 0,
+                                                                        value = def_list_linm$digits
+                                                                ),
+                                                                
+                                                                # Number of digits Y-axis
+                                                                numericInput(
+                                                                        inputId = "gr_linm_id_digits_y",
+                                                                        label = "Number of digits in Y-axis",
+                                                                        min = 0,
+                                                                        value = def_list_linm$digits_y
+                                                                ),
+                                                                
+                                                                # Select font
+                                                                pickerInput(
+                                                                        inputId = "gr_linm_id_font",
+                                                                        label = "Select font",
+                                                                        choices = font_list,
+                                                                        selected = def_list_linm$font,
+                                                                        choicesOpt = list(
+                                                                                content = c("<div style='font-family: Calibri'>Calibri</div>", 
+                                                                                        "<div style='font-family: sans'>Arial</div>", 
+                                                                                        "<div style='font-family: mono'>Courier</div>", 
+                                                                                        "<div style='font-family: serif'>TimesNewRoman</div>"))
+                                                                ),
+
+                                                                # Select legend position
+                                                                pickerInput(
+                                                                        inputId = "gr_linm_id_legend_pos",
+                                                                        label = "Select legends position", 
+                                                                        choices = position_list,
+                                                                        selected = def_list_linm$legend_pos,
+                                                                        multiple = FALSE
+                                                                )
                                                         )
                                                         
                                                 ),
-                                                
-                                                wellPanel( 
+                                                mainPanel(
                                                         
-                                                        style = "background-color: #ebf5fb",
+                                                        # Download graphs options
+                                                        helpText("Download zip file with plots and underlying data (select plot size)"),
+                                                        downloadButton("gr_linm_download_large", "Long Plots"),
+                                                        downloadButton("gr_linm_download_small", "Small Plots"),
+                                                        tags$br(),
+                                                        tags$br(),
                                                         
-                                                        h4("Display options"),
+                                                        # Plots' dynamic UI
+                                                        tags$br(),
+                                                        uiOutput("gr_linm_out_plots") %>% withSpinner(type = 3, 
+                                                                color = def_list_data$col_spinner, 
+                                                                color.background = "white"),
                                                         
-                                                        # Include title
-                                                        materialSwitch(
-                                                                inputId = "gr_line_id_title",
-                                                                label = "Include title",
-                                                                value = def_list_line$title,
-                                                                status = "primary",
-                                                                right = TRUE
-                                                        ),
                                                         
-                                                        # Include Y-axis units
-                                                        materialSwitch(
-                                                                inputId = "gr_line_id_yaxis",
-                                                                label = "Include Y-axis units",
-                                                                value = def_list_line$yaxis,
-                                                                status = "primary",
-                                                                right = TRUE
-                                                        ),
-                                                        
-                                                        # Include source
-                                                        materialSwitch(
-                                                                inputId = "gr_line_id_source",
-                                                                label = "Include source",
-                                                                value = def_list_line$source,
-                                                                status = "primary",
-                                                                right = TRUE
-                                                        ),
-                                                        
-                                                        # Include data labels
-                                                        materialSwitch(
-                                                                inputId = "gr_line_id_data_labels",
-                                                                label = "Include data labels",
-                                                                value = def_list_line$data_labels,
-                                                                status = "primary",
-                                                                right = TRUE
-                                                        ),
-                                                        
-                                                        # Include subperiods
-                                                        conditionalPanel(
-                                                                condition = "input.in_id_time_subper == true",
-                                                                materialSwitch (
-                                                                        inputId = "gr_line_id_time_subper",
-                                                                        label = "Include subperiods",
-                                                                        value = def_list_line$time_subper,
-                                                                        status = "primary",
-                                                                        right = TRUE)
-                                                        ),
-                                                        
-                                                        # Transform data to Trillion/Billion/Million/Thousands
-                                                        materialSwitch(
-                                                                inputId = "gr_line_id_transform_zeros",
-                                                                label = "Transform data to Trillion/Billion/Million/Thousands",
-                                                                value = def_list_line$transform_zeros,
-                                                                status = "primary",
-                                                                right = TRUE
-                                                        ),
-                                                        
-                                                        # Transform data to logs (applies only to positive series)
-                                                        materialSwitch(
-                                                                inputId = "gr_line_id_transform_log",
-                                                                label = "Transform data to logs (applies only to positive series)",
-                                                                value = def_list_line$transform_log,
-                                                                status = "primary",
-                                                                right = TRUE
-                                                        ),
-                                                        
-                                                        # Change country names to short
-                                                        materialSwitch(
-                                                                inputId = "gr_line_id_ctry_short",
-                                                                label = "Short country names (ISO 3)",
-                                                                value = def_list_line$ctry_short,
-                                                                status = "primary",
-                                                                right = TRUE
-                                                        ),
-                                                        
-                                                        # Number of digits
-                                                        numericInput(
-                                                                inputId = "gr_line_id_digits",
-                                                                label = "Number of digits in labels",
-                                                                min = 0,
-                                                                value = def_list_line$digits
-                                                        ),
-                                                        
-                                                        # Number of digits Y-axis
-                                                        numericInput(
-                                                                inputId = "gr_line_id_digits_y",
-                                                                label = "Number of digits in Y-axis",
-                                                                min = 0,
-                                                                value = def_list_line$digits_y
-                                                        ),
-                                                        
-                                                        # Select font
-                                                        pickerInput(
-                                                                inputId = "gr_line_id_font",
-                                                                label = "Select font",
-                                                                choices = font_list,
-                                                                selected = def_list_line$font,
-                                                                choicesOpt = list(
-                                                                        content = c("<div style='font-family: Calibri'>Calibri</div>", 
-                                                                                "<div style='font-family: sans'>Arial</div>", 
-                                                                                "<div style='font-family: mono'>Courier</div>", 
-                                                                                "<div style='font-family: serif'>TimesNewRoman</div>"))
-                                                        ),
-                                                        
-                                                        # Select highlighted country/aggregate and color
-                                                        materialSwitch(
-                                                                inputId = "gr_line_id_highlight",
-                                                                label = "Highlight a country/aggregate",
-                                                                value = def_list_line$highlight,
-                                                                status = "primary",
-                                                                right = TRUE),
-                                                        
-                                                        conditionalPanel(
-                                                                condition = "input.gr_line_id_highlight == true",
-                                                                
-                                                                # Input: Country of analysis
-                                                                selectInput(
-                                                                        inputId = "gr_line_id_highlight_ctry",
-                                                                        label = "Select highlighted country/aggregate",
-                                                                        choices = c(""),
-                                                                        selected = "input.ctry"),
-                                                                
-                                                                # Input: Line plot color
-                                                                colourpicker::colourInput(
-                                                                        inputId ="gr_line_id_highlight_color", 
-                                                                        label = "Select colors of highlighted line", 
-                                                                        value = def_list_line$highlight_color,
-                                                                        allowTransparent = TRUE,
-                                                                        closeOnClick = TRUE),
-                                                        )
                                                 )
-                                        ),
-                                        
-                                        mainPanel(
-                                                
-                                                # Download graphs options
-                                                helpText("Download zip file with plots and underlying data (select plot size)"),
-                                                downloadButton("gr_line_download_large", "Long Plots"),
-                                                downloadButton("gr_line_download_small", "Small Plots"),
-                                                tags$br(),
-                                                tags$br(),
-                                                
-                                                # Plots' dynamic UI
-                                                tags$br(),
-                                                uiOutput("gr_line_out_plots") %>% withSpinner(type = 3, 
-                                                        color = def_list_data$col_spinner, 
-                                                        color.background = "white"),
-                                                
-                                                
-
-                                                
                                         )
+                                        
                                 )
                         ),
-                        
-                        
-                        ##################################################################################
                         
                         navbarMenu(title = "Ranking plots",
                                 
@@ -3079,9 +3308,6 @@ ui <- shinyUI(
                                         )
                                 )
                         ),
-                        
-                        
-                        ##################################################################################
                         
                         tabPanel(title = "Scatter plots",
                                 
@@ -7860,7 +8086,7 @@ server <- function(input, output, session) {
         
 ##************************************************************************************************** ----
         
-        ## Line plots ----
+        ## Line plots: single variable ----
          
         ### Reactive values ----
         rv_line <- reactiveValues(
@@ -8535,7 +8761,620 @@ server <- function(input, output, session) {
                         zip(file, vector_plots)
                 }
         )
+        
+##************************************************************************************************** ----
 
+## Line plots: multiple variables ----
+
+### Reactive values ----
+rv_linm <- reactiveValues(
+        
+        # Plot parameters
+        ctries = def_list_linm$ctries,
+        time_range = def_list_linm$time_range,
+        plot_num = def_list_linm$plot_num,
+        
+        # Individual plot parameters
+        vars = def_list_linm$vars,
+        title_text = def_list_linm$title_text,
+        yaxis_text = def_list_linm$yaxis_text,
+        
+        # Display parameters
+        title = def_list_linm$title,
+        yaxis = def_list_linm$yaxis,
+        source = def_list_linm$source,
+        data_labels = def_list_linm$data_labels,
+        time_subper = def_list_linm$time_subper,
+        transform_zeros = def_list_linm$transform_zeros,
+        transform_log = def_list_linm$transform_log,
+        ctry_short = def_list_linm$ctry_short,
+        digits = def_list_linm$digits,
+        digits_y = def_list_linm$digits_y,
+        font = def_list_linm$font,
+        legend_pos = def_list_linm$legend_pos
+        
+)        
+
+
+### Update inputs ----
+
+# Inputs that are independent of the number of plots
+observeEvent(c(input$in_id_update, input$in_id_reset_confirm), {
+        
+        print("Plots - Linm [1]: Updating inputs")
+        
+        # Country input
+        aux_ctry <- unique(rv_df$dat_all %>% select(Country, Ctry_group, Ctry_group_num))
+        aux_ctry$Ctry_slash_Group <- paste(aux_ctry$Country, aux_ctry$Ctry_group, sep = " | ")
+        aux_ctry <- aux_ctry[order(
+                aux_ctry$Ctry_group_num,
+                aux_ctry$Country), ]
+        ctry_choices <- as.list(aux_ctry$Country)
+        names(ctry_choices) <- aux_ctry$Ctry_slash_Group
+        ctry_select <- c(rv_input$ctries_ctry, rv_input$ctries_str, rv_input$ctries_asp, rv_input$ctries_reg)
+        
+        updatePickerInput(
+                session = session,
+                inputId = 'gr_linm_id_ctries',
+                choices = ctry_choices,
+                selected = rv_linm$ctries,
+                options = list(size = 15,
+                        `actions-box` = TRUE)
+        )
+        
+        # Time input
+        updateSliderInput(
+                session = session,
+                inputId = "gr_linm_id_time_range",
+                min = rv_input$time_range_start,
+                max = rv_input$time_range_end,
+                step = 1,
+                value = c(rv_input$time_range_start, rv_input$time_range_end)
+        )
+})
+
+# Generate reactive values for each plot (depends on number of plots)
+observeEvent(c(input$in_id_update,
+        input$in_id_reset_confirm,
+        input$gr_linm_id_plot_num),{
+                
+                print("Plots - Linm [2]: Generate reactive values (depends on number of plots)")
+                
+                if(nrow(rv_df$dat_all)==0){return()}
+                
+                # If reactive value is null
+                for(i in 1:input$gr_linm_id_plot_num){
+                        
+                        # We hard code the first plot to have the trade example plotted
+                        
+                        # Variables names
+                        if(is.null(eval(parse(text = paste0("rv_linm$vars", i))))){
+                                eval(parse(text = paste0("rv_linm$vars", i, " <- rv_linm$vars")))
+                        }
+                        
+                        # Title and Y-axis legend
+                        if(is.null(eval(parse(text = paste0("rv_linm$title_text", i))))){
+                                if(i==1){title <- rv_linm$title_text}else{title <- paste0("Title ", i)}
+                                eval(parse(text = paste0("rv_linm$title_text", i, " <- title")))
+                        }
+                        
+                        if(is.null(eval(parse(text = paste0("rv_linm$yaxis_text", i))))){
+                                if(i==1){yaxis <- rv_linm$yaxis_text}else{yaxis <- paste0("Y-axis title ", i)}
+                                eval(parse(text = paste0("rv_linm$yaxis_text", i, " <- yaxis")))
+                        }
+                        
+                }
+        })
+
+
+# Render UI for inputs of each plot (number of input widgets created depends on choice of number of plots)
+output$gr_linm_id_input_panels <- renderUI({
+        
+        print("Plots - Linm [3]: Generate input widgets for individual plots")
+        
+        if(nrow(rv_df$dat_all)==0){return()}
+        
+        aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
+        
+        lapply(1:input$gr_linm_id_plot_num, function(i) {
+                
+                # Inputs that depend on the number of plots
+                
+                wellPanel(
+                        style = "background-color: #ebf5fb",
+                        
+                        h4(paste("Stacked plot "), i),
+                        
+                        fluidPage(
+                                
+                                selectizeInput(
+                                        inputId = paste0('gr_linm_id_vars', i),
+                                        label = "Select variables",
+                                        choices = aux_var,
+                                        multiple = TRUE,
+                                        select = eval(parse(text = paste0("rv_linm$vars", i))),
+                                        options = list(placeholder = 'Select')
+                                ),
+                                
+                                textInput(
+                                        inputId = paste0("gr_linm_id_title_text",i),
+                                        label = "Plot title text",
+                                        value = isolate(eval(parse(text = paste0("rv_linm$title_text", i))))
+                                ),
+                                
+                                textInput(
+                                        inputId = paste0("gr_linm_id_yaxis_text", i),
+                                        label = "Y-axis text",
+                                        value = isolate(eval(parse(text = paste0("rv_linm$yaxis_text", i))))
+                                )
+                        )
+                )
+        })
+})
+
+###  Update reactive values to changes in raw data ----
+observeEvent(c(input$in_id_update, input$in_id_reset_confirm),{
+        
+        print("Plots - Linm [4]: Updating reactive values [changes in raw data]")
+        
+        # Country 
+        aux_ctries <- unique(rv_df$dat_all$Country)
+        # rv_linm$ctries <- aux_ctries[aux_ctries %in% c(rv_input$ctries_ctry, rv_input$ctries_asp, rv_input$ctries_str, rv_input$ctries_reg)]
+        rv_linm$ctries <- aux_ctries[aux_ctries %in% rv_linm$ctries]
+        
+        # Variables (select all variables from new dataset)
+        aux_var <- unique(paste(rv_df$dat_all$Var_name, rv_df$dat_all$Var_code, sep = " | "))
+        rv_linm$vars <- aux_var
+        
+        # Time range (select all years of new dataset)
+        aux_year <- c(rv_input$time_range_start, rv_input$time_range_end)
+        rv_linm$time_range <- aux_year
+        
+}, ignoreInit = TRUE)
+
+###  Update reactive values to changes in linm plot parameters ----
+
+observeEvent(c(input$gr_linm_id_update),{
+        
+        print("Plots - Linm [5]: Updating reactive values [update linm plot parameters]")
+        
+        # Plot parameters
+        rv_linm$ctries <- input$gr_linm_id_ctries
+        rv_linm$time_range <- input$gr_linm_id_time_range
+        
+        # Individual plot parameters
+        rv_linm$plot_num <- input$gr_linm_id_plot_num
+        
+        for (i in 1:input$gr_linm_id_plot_num){
+                
+                eval(parse(text = paste0("rv_linm$vars", i, " <- input$gr_linm_id_vars", i)))
+                eval(parse(text = paste0("rv_linm$title_text", i, " <- input$gr_linm_id_title_text", i)))
+                eval(parse(text = paste0("rv_linm$yaxis_text", i, " <- input$gr_linm_id_yaxis_text", i)))
+                
+        }
+        
+        # Display parameters
+        rv_linm$title <- input$gr_linm_id_title
+        rv_linm$yaxis <- input$gr_linm_id_yaxis
+        rv_linm$source <- input$gr_linm_id_source
+        rv_linm$data_labels <- input$gr_linm_id_data_labels
+        rv_linm$time_subper <- input$gr_linm_id_time_subper
+        rv_linm$transform_zeros <- input$gr_linm_id_transform_zeros
+        rv_linm$transform_log <- input$gr_linm_id_transform_log
+        rv_linm$ctry_short <- input$gr_linm_id_ctry_short
+        rv_linm$digits <- input$gr_linm_id_digits
+        rv_linm$digits_y <- input$gr_linm_id_digits_y
+        rv_linm$font <- input$gr_linm_id_font
+        rv_linm$legend_pos <- input$gr_linm_id_legend_pos
+        
+}, ignoreInit = TRUE)
+
+### Plots ----
+
+# Prep data
+prepped_data_linm <- eventReactive(c(input$in_id_update, input$in_id_reset_confirm, input$gr_linm_id_update),{
+        
+        print("Plots - Linm [6]: preparing data")
+        
+        if(nrow(rv_df$dat_all)==0){return()}
+        if(length(rv_linm$ctries)==0){return()}
+        
+        # Filter by country
+        df_aux <- rv_df$dat_all[rv_df$dat_all$Country %in% rv_linm$ctries, ]
+        
+        # Create variable_name | variable_code column
+        df_aux$Var_slash_code <- paste(df_aux$Var_name, df_aux$Var_code, sep = " | ")
+        
+        #Create empty list for tibbles
+        tibble_list <- list()
+        
+        for (i in 1:rv_linm$plot_num){
+                
+                list_name <- paste0("table", i)
+                
+                if(is.null(eval(parse(text = paste0("rv_linm$vars", i))))){
+                        
+                        tibble_list[[list_name]] <- data.frame()
+                        
+                }else{
+                        
+                        # Select variables
+                        df_aux_2 <- df_aux[df_aux$Var_slash_code %in% eval(parse(text = paste0("rv_linm$vars", i))), ]
+                        
+                        # Filter data by year
+                        df_aux_2 <- df_aux_2 %>% filter(Year >= rv_linm$time_range[1] & Year <= rv_linm$time_range[2])
+                        
+                        # Title
+                        df_aux_2 <- df_aux_2 %>% tibble::add_column(
+                                Title = as.character(paste0(eval(parse(text = paste0("rv_linm$title_text", i))))),
+                                Y_axis = as.character(eval(parse(text = paste0("rv_linm$yaxis_text", i)))),
+                        )
+                        
+                        # Append to list
+                        df_aux_2 <- df_aux_2 %>% as_tibble()
+                        tibble_list[[list_name]] <- df_aux_2
+                        
+                }
+                
+                rv_linm$tibble_list <- tibble_list
+        }
+        
+        # Create subperiod variables to include rectangles
+        if(rv_input$time_subper & rv_linm$time_subper){
+                subper_list <- subper_rectangles_fun(
+                        subper_num = rv_input$time_subper_num,
+                        time_range = rv_linm$time_range,
+                        time_lim_1 = rv_input$time_limit_1,
+                        time_lim_2 = rv_input$time_limit_2,
+                        time_lim_3 = rv_input$time_limit_3,
+                        time_name_1 = rv_input$time_name_1,
+                        time_name_2 = rv_input$time_name_2,
+                        time_name_3 = rv_input$time_name_3,
+                        time_name_4 = rv_input$time_name_4
+                )
+                
+                rv_linm$rectangle_text <- subper_list[[1]]
+                rv_linm$vertical_lines <- subper_list[[2]]
+        }
+        
+        return(rv_linm$tibble_list)
+        
+})
+
+# Create plots
+createUI_linm <- function(table) {
+        
+        rv_plots$linm_counter <- rv_plots$linm_counter +1
+        print(paste0("Render linm plot ", rv_plots$linm_counter, "/", rv_plots$linm_counter_total))
+        
+        rectangle_text <- rv_linm$rectangle_text
+        vertical_lines <- rv_linm$vertical_lines
+        
+        if(all(is.na(table$Value))){return()}
+        
+        title_text <- ""
+        subtitle_text <- ""
+        yaxis_units <- ""
+        graph_source <- ""
+        
+        # Input for title, subtitle Y-axis and source
+        title_text <- if(rv_linm$title){unique(table$Title)}
+        yaxis_units <- if(rv_linm$yaxis){unique(table$Y_axis)} else {NULL}
+        
+        if(rv_linm$source){
+                graph_source <- unique(table$Database)
+                graph_source[graph_source=="WDI"] <- "World Development Indicators"
+                graph_source <- paste(graph_source, collapse = ",")
+                graph_source <- paste0(graph_source, ".")
+        }
+        
+        # Year axis intervals: if less than 30 years covered, then include all years, otherwise every 2 years
+        intervals <- ifelse(rv_linm$time_range[2] - rv_linm$time_range[1] < 30, 1, 2)
+        
+        # Transform data: divide by trillions/billions/millions/thousands
+        for (i in 4:1){
+                if(rv_linm$transform_zeros & max(abs(table$Value), na.rm = TRUE)>(10^(3*i))){
+                        if(rv_linm$title) {
+                                subtitle_text <- paste(
+                                        c(subtitle_text, units_zeros[5 - i]),
+                                        collapse = "")
+                                separator <- if(subtitle_text == ""){""} else {", "}
+                                if(rv_linm$yaxis){
+                                        yaxis_units <- paste(
+                                                c(yaxis_units, units_zeros[5 - i]),
+                                                collapse = separator)
+                                }
+                        }
+                        table$Value <- table$Value/(10^(3*i))
+                }
+        }
+        
+        # Log transform
+        if(rv_linm$transform_log & min(table$Value, na.rm = TRUE)>0){
+                subtitle_text <- paste(
+                        c(subtitle_text, " (Log transformation)"),
+                        collapse = "")
+                if(rv_linm$yaxis){
+                        yaxis_units <- paste(
+                                c(yaxis_units, " (Log transformation)"),
+                                collapse = "")
+                }
+                table$Value <- log(table$Value)
+        }
+        
+        # Eliminates elements between parenthesis (and the parenthesis)
+        legend_labels <- gsub("\\s*\\([^\\)]+\\)", "", as.character(unique(table$Var_name)))
+        
+        # If longer than 20 characters, divide legend labels in multiple lines
+        legend_labels <- multiline_text_fun(text_vector = legend_labels, number_characters = 20)
+        
+        # Title
+        title_text_paragraph <- str_wrap(title_text, width = 130)
+        
+        # Actually create plot
+        
+        p <- ggplot(data = table, aes(x = Year, y = Value, group = interaction(Country, Var_name), color = Country, shape=Var_name )) +
+                geom_line(data = table[!is.na(table$Value),], size = 1.5) + 
+                geom_point(size = 4)
+        
+        #         # Aesthetics
+        p <- p +
+                labs(title = title_text_paragraph,
+                        subtitle = subtitle_text,
+                        caption = if(rv_linm$source){paste("Source: ", graph_source, sep = "")},
+                        y = if(rv_linm$yaxis){yaxis_units} else {NULL}) + 
+                theme_minimal() +
+                theme(panel.border = element_blank(),
+                        panel.grid.major.x = element_blank(),
+                        panel.grid.major.y = element_line(linetype = "dashed"),
+                        panel.grid.minor = element_blank(),
+                        plot.title = element_text(size = 12, face = "bold"),
+                        plot.margin = margin(0.25, 0.25, 1, 0.25, "cm"),
+                        plot.caption = element_text(hjust = 0, size = 10),
+                        axis.ticks.x = element_blank(),
+                        axis.ticks.y = element_blank(),
+                        axis.text.x = element_text(colour = "black"),
+                        axis.text.y = element_text(colour = "black"),
+                        text = element_text(size = 12,  family = isolate(rv_linm$font)),
+                        legend.title = element_blank()
+                )+
+                
+                # Define intervals of Year axis
+                scale_x_continuous(name = "",
+                        breaks = seq(rv_linm$time_range[1],
+                                rv_linm$time_range[2],
+                                by = intervals)
+                )+
+                scale_shape(labels = legend_labels)+
+                coord_cartesian(xlim = c(rv_linm$time_range[1], rv_linm$time_range[2]))+
+                scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.9)
+        
+
+        
+        # Include data labels
+        if(rv_linm$data_labels){
+                
+                p <- p +
+                geom_text(data = table,
+                        aes(x = Year, y = Value, label = format(round(as.numeric(Value), rv_linm$digits), nsmall = rv_linm$digits, big.mark = ",")),
+                        vjust = -0.5,
+                        size = 3,
+                        family = rv_linm$font,
+                        na.rm = TRUE,
+                        inherit.aes = FALSE)
+
+        }
+        
+        # Increase range of Y axis to make room for the box indicating subperiod
+        y_min <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
+        y_max <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
+        y_range <- y_max - y_min
+        
+        # Include thousands separating comma in Y-axis
+        p <- p + scale_y_continuous(name = yaxis_units,
+                labels = comma_format(accuracy = 1/10^(rv_linm$digits_y), big.mark = ","),
+                breaks = pretty_breaks(),
+                limits = c(y_min, y_max + (y_range*0.1),
+                        inherit.aes = FALSE)
+        )
+        
+        # Get new axis limits that will be used as inputs to define the size of the subperiod rectangles
+        y_min_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
+        y_max_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[2]
+        y_range_new <- y_max - y_min
+        
+        #Define other parameters that will be used as inputs to define the size of the subperiod rectangles
+        size_factor <- 0.08
+        ALPHA <- 0.15
+        
+        # Subperiod rectangles, their labels and the dotted lines separating
+        if(rv_input$time_subper & rv_linm$time_subper){
+                p <- p +
+                        geom_rect(data = rectangle_text,
+                                aes(NULL, NULL, xmin = my_min_fun(Year_start), xmax = my_max_fun(Year_end)),
+                                ymin = y_max_new - y_range_new * size_factor ,
+                                ymax = y_max_new,
+                                colour = NA,
+                                fill="grey",
+                                alpha = 0.5,
+                                inherit.aes = FALSE
+                        ) +
+                        geom_label(data = rectangle_text,
+                                aes(x = Year_start + (Year_end - Year_start) / 2,
+                                        y = y_max_new * ALPHA + (y_max_new - y_range_new * size_factor) * (1 - ALPHA),
+                                        label = Period,
+                                        family = rv_linm$font
+                                ),
+                                size = 3.3,
+                                fill = "grey",
+                                alpha = 0,
+                                label.size = NA,
+                                hjust = "center",
+                                vjust = "bottom",
+                                inherit.aes = FALSE)
+
+                for (i in vertical_lines) {
+                        p <- p + geom_segment(x = i,
+                                y = y_max_new,
+                                xend = i,
+                                yend = y_max_new - y_range_new * size_factor,
+                                colour = "white",
+                                size = 1,
+                                alpha = 1,
+                                inherit.aes = FALSE) +
+                                geom_segment(x = i,
+                                        y = y_max_new - y_range_new * size_factor,
+                                        xend = i,
+                                        yend = -Inf,
+                                        colour = "grey",
+                                        linetype = "dotted",
+                                        inherit.aes = FALSE)
+                }
+        }
+
+        # Correct digits if numbers are repeated in Y-axis
+        x <- ggplot_build(p)$layout$panel_params[[1]]$y.sec$breaks
+        x <- x[!is.na(x)]
+        yaxis_number_labels <- length(x)
+        yaxis_number_labels_obs <- length(unique(round(x, rv_linm$digits_y)))
+        digits <- rv_linm$digits_y
+        
+        while(yaxis_number_labels > yaxis_number_labels_obs){
+                digits <- digits + 1
+                p <- p + scale_y_continuous(name = yaxis_units,
+                        labels = comma_format(accuracy = 1/10^(digits), big.mark = ","),
+                        breaks = pretty_breaks())
+                
+                x <- ggplot_build(p)$layout$panel_params[[1]]$y.sec$breaks
+                x <- x[!is.na(x)]
+                yaxis_number_labels <- length(x)
+                yaxis_number_labels_obs <- length(unique(round(x, digits)))
+        }
+        
+        # Append plot to the list of plots
+        rv_plots$linm <- list.append(rv_plots$linm, p)
+        
+        # Append data
+        table$Title <- title_text
+        table$Subtitle <- subtitle_text
+        table$Y_axis <- yaxis_units
+        table$Source <- graph_source
+        
+        # Select columns
+        table <- table %>% select(c("Var_name", "Var_code", "Units", "Country", "Ctry_iso", "Ctry_group", "Ctry_group_num", "Year", "Period", "Period_num", "Value", "Database", "Title", "Subtitle", "Y_axis", "Source"))
+        
+        
+        rv_plots$linm_data <- list.append(rv_plots$stas_linm, table)
+        
+        # Show plot
+        renderPlot(p)
+        
+        
+        
+
+}
+
+# Call Prep data and Create plots
+output$gr_linm_out_plots <- renderUI({
+        
+        print("****************************")
+        print("Plots - Linm: start renderUI")
+        
+        rv_plots$linm <- list()
+        rv_plots$linm_data <- list()
+        
+        pd <- req(prepped_data_linm())
+        
+        rv_plots$linm_counter <- 0
+        rv_plots$linm_counter_total <- length(isolate(pd))
+        
+        final <- isolate(tagList(map(pd, ~ createUI_linm(.))))
+        
+        print("Plots - Linm: finish renderUI")
+        print("****************************")
+        cat("\n")
+        
+        return(final)
+        
+})
+
+### Plots download handlers ----
+
+# Download plots as png zipped - large
+output$gr_linm_download_large <- downloadHandler(
+        filename = 'line_multiple_plots_large.zip',
+        content = function(file){
+                
+                # Set temporary working directory
+                owd <- setwd(tempdir())
+                on.exit(setwd(owd))
+                
+                # Save the plots
+                vector_plots <- vector()
+                
+                for (i in 1:length(rv_plots$linm)){
+                        name <- paste("line_multiple_large", i, ".png", sep = "")
+                        ggsave(name,
+                                plot = rv_plots$linm[[i]],
+                                device = "png",
+                                width = 11.5,
+                                height = 5.75,
+                                units = "in")
+                        vector_plots <- c(vector_plots, paste("line_multiple_large", i, ".png", sep = ""))
+                        
+                        name_data <- paste("line_multiple_large_data", i, ".csv", sep = "")
+                        write.csv(rv_plots$linm_data[[i]], name_data, row.names = FALSE)
+                        vector_plots <- c(vector_plots, paste("line_multiple_large_data", i, ".csv", sep = ""))
+                        
+                }
+                
+                # Zip them up
+                zip(file, vector_plots)
+        }
+)
+
+# Download plots as png zipped - small
+output$gr_linm_download_small <- downloadHandler(
+        filename = 'line_multiple_plots_small.zip',
+        content = function(file){
+                
+                # Set temporary working directory
+                owd <- setwd(tempdir())
+                on.exit(setwd(owd))
+                
+                # Save the plots
+                vector_plots <- vector()
+                for (i in 1:length(rv_plots$linm)){
+                        name <- paste("line_multiple_small", i, ".png", sep = "")
+                        
+                        # Increase intervals in X axis in small plots
+                        intervals <- ifelse(max(rv_linm$time_range) - min(rv_linm$time_range) < 30, 2, 4)
+                        rv_plots$linm[[i]] <- rv_plots$linm[[i]] +
+                                scale_x_continuous(name = "",
+                                        breaks = seq(min(rv_linm$time_range),
+                                                max(rv_linm$time_range),
+                                                by = intervals))+
+                                theme(legend.position = "bottom")
+                        
+                        ggsave(name,
+                                plot = rv_plots$linm[[i]],
+                                device = "png",
+                                width = 5.75,
+                                height = 5.75,
+                                units = "in")
+                        vector_plots <- c(vector_plots, paste("line_multiple_small", i, ".png", sep = ""))
+                        
+                        name_data <- paste("line_multiple_small_data", i, ".csv", sep = "")
+                        write.csv(rv_plots$linm_data[[i]], name_data, row.names = FALSE)
+                        vector_plots <- c(vector_plots, paste("line_multiple_small_data", i, ".csv", sep = ""))
+                        
+                }
+                
+                # Zip them up
+                zip(file, vector_plots)
+        }
+)
+        
 ##************************************************************************************************** ----
 
 ## Ranking across time plots ----
@@ -8606,7 +9445,7 @@ observeEvent(c(input$in_id_update, input$in_id_reset_confirm) , {
                 inputId = 'gr_rnkt_id_vars',
                 label = "Select variables",
                 choices = aux_var,
-                selected = aux_var,
+                selected = rv_rnkt$vars,
                 options = list(size = 15,
                         `actions-box` = TRUE)
         )
