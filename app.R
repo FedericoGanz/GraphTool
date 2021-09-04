@@ -3141,7 +3141,7 @@ ui <- shinyUI(
                                                                 pickerInput(
                                                                         inputId = "gr_rnks_id_stat",
                                                                         label = "Method of aggregation by period", 
-                                                                        choices = stats_vec,
+                                                                        choices = stats_vec[1:6],
                                                                         selected = def_list_rnks$stat,
                                                                         multiple = FALSE
                                                                 ),
@@ -3177,7 +3177,7 @@ ui <- shinyUI(
                                                                 # Include Y-axis units
                                                                 materialSwitch(
                                                                         inputId = "gr_rnks_id_yaxis",
-                                                                        label = "Include Y-axis units",
+                                                                        label = "Include axis units",
                                                                         value = def_list_rnks$yaxis,
                                                                         status = "primary",
                                                                         right = TRUE
@@ -9706,7 +9706,7 @@ createUI_rnkt <- function(table) {
         }
         
         p <- p +
-                scale_x_continuous(breaks = min(rv_rnkt$time_range):max(rv_rnkt$time_range), limits = limits)+
+                scale_x_continuous(name = "", breaks = min(rv_rnkt$time_range):max(rv_rnkt$time_range), limits = limits)+
                 # Theme ans aesthetics
                 theme_minimal() +
                 theme(panel.grid.major.y = element_blank(),
@@ -9746,8 +9746,11 @@ createUI_rnkt <- function(table) {
         ybreaks <- ybreaks[2:length(ybreaks)]}
         
         
-        p <- p + scale_y_reverse(limits = c(my_max_fun(table_allvalues$Value), - ((my_max_fun(table_allvalues$Value) - my_min_fun(table_allvalues$Value)) * 0.05)), 
-                breaks = ybreaks)
+        if(rv_input$time_subper & rv_rnkt$time_subper ){
+                p <- p + scale_y_reverse(limits = c(my_max_fun(table_allvalues$Value), - ((my_max_fun(table_allvalues$Value) - my_min_fun(table_allvalues$Value)) * 0.025)), breaks = ybreaks)} 
+        else{
+                p <- p + scale_y_reverse(limits = c(my_max_fun(table_allvalues$Value), 1), breaks = ybreaks)         
+                }
         
         # To use in vertical lines
         y_min_new <- ggplot_build(p)$layout$panel_params[[1]]$y.range[1]
@@ -10229,6 +10232,7 @@ createUI_rnks <- function(table) {
                         group_by(Country) %>%
                         mutate(sum_value = Value[which.max(Year)]) %>%
                         ungroup()
+                table <- table %>% distinct(Country, .keep_all = TRUE)
                 if(rv_rnks$title){
                         if(subtitle_text == ""){subtitle_text <- paste(
                                 c(subtitle_text, "Period most recent value"),
@@ -10276,8 +10280,6 @@ createUI_rnks <- function(table) {
                 face_text_label <- "plain"
                 size_text_label <- 10
         }
-        
-
 
         # Actually create plot
         p <- ggplot(data = subset(table, !is.na(sum_value)),
@@ -10293,9 +10295,7 @@ createUI_rnks <- function(table) {
                 geom_point(col=color_ball, size=ballsize) +
                 labs(title = title_text_paragraph,
                         subtitle = subtitle_text,
-                        caption = if(rv_rnks$source){paste("Source: ", graph_source, ".", sep="")},
-                        y = if(rv_rnks$horizontal & rv_rnks$yaxis){NULL} else {yaxis_units},
-                        x = if(rv_rnks$horizontal & rv_rnks$yaxis){yaxis_units} else {NULL},
+                        caption = if(rv_rnks$source){paste("Source: ", graph_source, ".", sep="")}
                 )+
                 theme(panel.background = element_rect(fill=NA),
                         panel.border = element_blank(),
@@ -10310,11 +10310,24 @@ createUI_rnks <- function(table) {
                         axis.text.x = if(!rv_rnks$horizontal & rv_rnks$yaxis){element_text(angle = 90, vjust = 0.5, hjust=1, colour = "black", face = face_text_label, size = size_text_label)} else {element_text(vjust = 0.5, hjust=0.5, colour = "black")}, 
                         axis.text.y = if(!rv_rnks$horizontal & rv_rnks$yaxis){element_text(colour = "black")}else{element_text(colour = "black", face = face_text_label, size = size_text_label)},
                         text = element_text(size = 12, family = rv_rnks$font),
-                        legend.title = element_blank(),
-                        axis.title.y = element_text()
+                        legend.title = element_blank()
                 )
         
-        if(rv_rnks$horizontal){p <- p + coord_flip()}
+        if(rv_rnks$horizontal){
+                
+                p <- p + coord_flip()
+                
+        }
+        
+        if(rv_rnks$yaxis) {
+                
+                p <- p + labs(
+                        y = yaxis_units,
+                        x = NULL
+                )  
+        }
+        
+
                 
         # Append plot to the list of plots
         rv_plots$rnks <- isolate(list.append(rv_plots$rnks, p))
