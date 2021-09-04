@@ -1,0 +1,125 @@
+<p><strong>General</strong></p>
+<ul>
+<li>Data: country-year panel.</li>
+<li>File formats: .txt, .xls, .xlsx, .csv (separated by commas or semicolons), .dta </li>
+</ul>
+<p><strong>Variables that must be included</strong></p>
+<ol>
+<li>&#39;Var_name&#39;: variable name.</li>
+<li>&#39;Units&#39;: units in which the variable is expressed.</li>
+<li>&#39;Ctry_iso&#39;: country ISO 3 code (see 'Countries/aggregates WDI' tab in 'Data') </a>.</li>
+<li>&#39;Year&#39;: year (non-numeric values will be treated as missing).</li>
+<li>&#39;Value&#39;: value (non-numeric values will be treated as missing).</li>
+</ol>
+<p><strong>Additional variables that can be included</strong></p>
+<ol>
+<li>&#39;Database&#39;: source of the data. If not included, then the file name is used. This is the variable used in plots if "Include source" option is selected.</li>
+<li>&#39;Var_code&#39;: variable code. It should be unique for each variable. If not included, then 'Var_name'_'Database' is used.</li>
+<li>&#39;Description&#39; (Metadata): variable description.</li>
+<li>&#39;Source_data&#39; (Metadata): database where the information was retrieved.</li>
+<li>&#39;Source_org&#39; (Metadata): organization that collects the data.</li>
+</ol>
+<p><strong>Data loading process</strong></p>
+<p>When loading, data will be filtered using the country selection (countries/aggregates included in the vector defined by the seven country input variables - Analyzed, Structural, Aspirational, Groups of countries, Aggregates, All countries and All aggregates) and the Year range selected at the moment of updating.</p>
+<p>If, for example, country selection is empty at the moment of updating, then no data will be loaded.</p>
+<p>Countries and aggregates which do not have a ISO 3 code in the WDI database will not be included.</p>
+<p>After the data is loaded, changes in Year range will not affect the external data already loaded (it will only affect WDI data).</p>
+<p>However, both changes in Periods (name or limits) and Ctry_group will affect the external data that has been loaded.</p>
+<p>For example: imagine we have a dataset with data for Argentina, and that Argentina was not initially included in the country selection. Moreover, imagine we include, after loading, Argentina in the Structural group. The result is that Argentina will not appear in the external data of the dataset.</p>
+<p>However, imagine now that Argentina was initially included in the country selection as the Analyzed unit, and that, after loading, we change it to the Aspirational group. In this case Argentina will be included in the dataset and the variable Ctry_group will indicate the new classification (Aspirational).</p>
+<p>The uploaded dataset will have as many rows as 'variables * countries * years' selected.</p>
+<p>If, for example, the dataset we want to upload contains only one country (Argentina), one variable (GDP in USD) and one year of data (2020), and we set the All countries and All aggregates options as True (304 countries/aggregates) and the Year range to 2000-2019 (20 years), then the final dataset will include 6,080 rows (1 * 304 * 20). However, only one row will have no empty data for the column Value.</p>
+<p>Note: a variable is a unique Var_name/Var_code/Units/Database.</p>
+<p>For example, if the dataset we are trying to upload includes a row with the following values: Var_name: 'GDP'; Var_code: 'gdp_usd'; Units: 'USD'; Database: 'National sources', and another row with the same values for all variables but for Database (for example, 'IMF' instead of 'National sources'), then the dataset has at least two variables.</p>
+
+<p><strong>Simplified example</strong></p>
+<p><span style="text-decoration: underline;">Input selection</span></p>
+<ul>
+<li>Selected countries: ARG, BRA, URY.</li>
+<li>Years: 2010, 2011.</li>
+</ul>
+<p><span style="text-decoration: underline;">Uploaded dataset</span></p>
+<table class="table table-striped">
+<thead>
+<tr>
+<th>Var_name</th>
+<th>Units</th>
+<th>Ctry_iso</th>
+<th>Year</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>URY</td>
+<td>2010</td>
+<td>6,724</td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>ARG</td>
+<td>2010</td>
+<td>68,187</td>
+</tr>
+</tbody>
+</table>
+<p><span style="text-decoration: underline;">Final input</span></p>
+<table class="table table-striped">
+<thead>
+<tr>
+<th>Var_name</th>
+<th>Units</th>
+<th>Ctry_iso</th>
+<th>Year</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>URY</td>
+<td>2010</td>
+<td>6,724</td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>URY</td>
+<td>2011</td>
+<td></td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>ARG</td>
+<td>2010</td>
+<td>68,187</td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>ARG</td>
+<td>2011</td>
+<td></td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>BRA</td>
+<td>2010</td>
+<td></td>
+</tr>
+<tr>
+<td>Merchandise exports</td>
+<td>Current billion US$</td>
+<td>BRA</td>
+<td>2011</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
