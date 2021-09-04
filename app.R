@@ -9682,7 +9682,6 @@ createUI_rnkt <- function(table) {
                                 fontface = "bold",
                                 hjust = 0,
                                 family = rv_rnkt$font)
-                
 
                 if(!all(is.na(highlighted_country_df$Value))){
                         p <- p +

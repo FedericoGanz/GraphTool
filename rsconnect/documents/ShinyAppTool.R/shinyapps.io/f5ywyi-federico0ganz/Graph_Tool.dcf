@@ -5,10 +5,10 @@ account: f5ywyi-federico0ganz
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 4341098
-bundleId: 4775737
+bundleId: 4781786
 url: https://f5ywyi-federico0ganz.shinyapps.io/Graph_Tool/
-when: 1625119236.25893
-lastSyncTime: 1625119236.25893
+when: 1625252660.74473
+lastSyncTime: 1625252660.74473
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: data_TEST.csv|data_TEST_withMissing.csv
+ignoredFiles: data_TEST.csv|data_TEST_withMissing.csv|ShinyAppTool_2.R
